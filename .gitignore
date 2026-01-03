@@ -17,3 +17,7 @@ venv/
 coverage/
 compile_commands.json
 megalinter-reports/
+
+# 防止误提交超大文件（GitHub 单文件 100MB 限制）
+reference/rockyou.txt
+news-projects/_audit/audit.json
