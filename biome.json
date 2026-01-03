@@ -1,7 +1,22 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.6.0/schema.json",
+  "files": {
+    "ignore": [
+      "**/target/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/vendor/**",
+      "**/src-tauri/gen/**",
+      "**/src-tauri/icons/**",
+      "megalinter-reports/**",
+      ".npm-cache/**"
+    ]
+  },
   "formatter": {
-    "enabled": true
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
   },
   "organizeImports": {
     "enabled": true
@@ -9,8 +24,17 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "all": true
+      "all": true,
+      "correctness": {
+        "noUndeclaredDependencies": "off",
+        "useImportExtensions": "off"
+      },
+      "style": {
+        "noDefaultExport": "off"
+      },
+      "suspicious": {
+        "noReactSpecificProps": "off"
+      }
     }
   }
 }
-

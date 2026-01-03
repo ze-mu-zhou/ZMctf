@@ -28,6 +28,49 @@ function Assert-Command {
     }
 }
 
+function Resolve-NodeTool {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$RepoRoot,
+        [Parameter(Mandatory = $true)][string]$ExcludePathRegex
+    )
+
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($null -ne $cmd) {
+        return [pscustomobject]@{
+            Path    = $cmd.Source
+            BaseDir = $null
+        }
+    }
+
+    $candidateNames = @("$Name.cmd", $Name)
+    $binDirs = New-Object System.Collections.Generic.List[string]
+
+    $binDirs.Add((Join-Path $RepoRoot "node_modules/.bin"))
+
+    $pkgFiles = Get-ChildItem -Path $RepoRoot -Recurse -File -Filter "package.json" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch $ExcludePathRegex }
+
+    foreach ($pkg in $pkgFiles) {
+        $binDirs.Add((Join-Path $pkg.Directory.FullName "node_modules/.bin"))
+    }
+
+    foreach ($binDir in $binDirs) {
+        foreach ($candidate in $candidateNames) {
+            $p = Join-Path $binDir $candidate
+            if (Test-Path -LiteralPath $p) {
+                $baseDir = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $p))
+                return [pscustomobject]@{
+                    Path    = $p
+                    BaseDir = $baseDir
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
 function Test-AnyFiles {
     param(
         [Parameter(Mandatory = $true)][string[]]$Patterns,
@@ -71,7 +114,7 @@ function Invoke-Checked {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$excludeRegex = '[\\/](\.git|target|node_modules|\.venv|\.mypy_cache|\.ruff_cache|dist|build|vendor|megalinter-reports)[\\/]'
+$excludeRegex = '[\\/](\.git|target|node_modules|\.venv|\.mypy_cache|\.ruff_cache|\.npm-cache|dist|build|vendor|megalinter-reports)[\\/]'
 $prefetch = $env:ZMCTF_CI_PREFETCH -eq "1"
 $skipMegaLinter = $env:ZMCTF_SKIP_MEGALINTER -eq "1"
 
@@ -93,10 +136,6 @@ Write-Section "Rust: flag-detector/core（clippy 极限严格 + 记录日志）"
 $clippyLog = Join-Path $repoRoot "clippy_flag_detector.log"
 Push-Location (Join-Path $repoRoot "flag-detector/core")
 try {
-    if (Test-Path -LiteralPath $clippyLog) {
-        Remove-Item -LiteralPath $clippyLog -Force
-    }
-
     $clippyCmd =
         'cargo clippy --workspace --all-targets --all-features --locked --offline -- ' +
         '-D warnings -D clippy::all -D clippy::pedantic -D clippy::nursery -D clippy::cargo ' +
@@ -126,21 +165,8 @@ Invoke-Checked -WorkDir (Join-Path $repoRoot "flag-detector/core") -FailMessage 
 }
 
 Write-Section "Rust: 规避检查扫描（禁止 #[allow(clippy::...)]）"
-$coreRoot = Join-Path $repoRoot "flag-detector/core"
-$scanDirs = @(
-    (Join-Path $coreRoot "flag-detector/src"),
-    (Join-Path $coreRoot "floss-integration/src"),
-    (Join-Path $coreRoot "tool-runner/src"),
-    (Join-Path $coreRoot "zmctf-constraints/src"),
-    (Join-Path $repoRoot "zmctf-desktop/src")
-)
-foreach ($d in $scanDirs) {
-    Assert-Exists -Path $d -Message ("扫描目录不存在：{0}" -f $d)
-}
-
-$rsFiles = foreach ($d in $scanDirs) {
-    Get-ChildItem -Path $d -Recurse -File -Filter "*.rs" -ErrorAction SilentlyContinue
-}
+$rsFiles = Get-ChildItem -Path $repoRoot -Recurse -File -Filter "*.rs" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch $excludeRegex }
 $pattern = '#\[\s*allow\(\s*clippy::'
 $hits = $rsFiles | Select-String -Pattern $pattern
 if ($null -ne $hits) {
@@ -150,18 +176,18 @@ if ($null -ne $hits) {
 }
 Write-Host "规避检查扫描：通过（未发现 #[allow(clippy::...)]）。" -ForegroundColor Green
 
-Write-Section "Rust: zmctf-desktop（rustfmt + clippy 极限严格 + 测试）"
-Assert-Exists -Path (Join-Path $repoRoot "zmctf-desktop/Cargo.toml") -Message "缺少 zmctf-desktop。"
+Write-Section "Rust: zmctf-desktop/src-tauri（rustfmt + clippy 极限严格 + 测试）"
+Assert-Exists -Path (Join-Path $repoRoot "zmctf-desktop/src-tauri/Cargo.toml") -Message "缺少 zmctf-desktop/src-tauri。"
 if ($prefetch) {
-    Write-Section "Rust: zmctf-desktop（依赖预拉取）"
-    Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop") -FailMessage "cargo fetch 未通过（zmctf-desktop）。" -Command {
+    Write-Section "Rust: zmctf-desktop/src-tauri（依赖预拉取）"
+    Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "cargo fetch 未通过（zmctf-desktop/src-tauri）。" -Command {
         cargo fetch --locked
     }
 }
-Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop") -FailMessage "rustfmt 未通过（zmctf-desktop）。" -Command {
+Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "rustfmt 未通过（zmctf-desktop/src-tauri）。" -Command {
     cargo fmt --all -- --check
 }
-Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop") -FailMessage "clippy 未通过（zmctf-desktop）。" -Command {
+Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "clippy 未通过（zmctf-desktop/src-tauri）。" -Command {
     cargo clippy --all-targets --all-features --locked --offline -- `
         -D warnings `
         -D clippy::all `
@@ -170,8 +196,35 @@ Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop") -FailMessage "clip
         -D clippy::cargo `
         -A clippy::multiple_crate_versions
 }
-Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop") -FailMessage "cargo test 未通过（zmctf-desktop）。" -Command {
+Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "cargo test 未通过（zmctf-desktop/src-tauri）。" -Command {
     cargo test --all-features --locked --offline
+}
+
+if (Test-Path -LiteralPath (Join-Path $repoRoot "zmctf-desktop-legacy-egui/Cargo.toml")) {
+    Write-Section "Rust: zmctf-desktop-legacy-egui（可选：旧 egui GUI）"
+    if ($prefetch) {
+        Write-Section "Rust: zmctf-desktop-legacy-egui（依赖预拉取）"
+        Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "cargo fetch 未通过（zmctf-desktop-legacy-egui）。" -Command {
+            cargo fetch --locked
+        }
+    }
+    Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "rustfmt 未通过（zmctf-desktop-legacy-egui）。" -Command {
+        cargo fmt --all -- --check
+    }
+    Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "clippy 未通过（zmctf-desktop-legacy-egui）。" -Command {
+        cargo clippy --all-targets --all-features --locked --offline -- `
+            -D warnings `
+            -D clippy::all `
+            -D clippy::pedantic `
+            -D clippy::nursery `
+            -D clippy::cargo `
+            -A clippy::multiple_crate_versions
+    }
+    Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "cargo test 未通过（zmctf-desktop-legacy-egui）。" -Command {
+        cargo test --all-features --locked --offline
+    }
+} else {
+    Write-Host "Rust: zmctf-desktop-legacy-egui：跳过（未发现）。" -ForegroundColor DarkGray
 }
 
 Write-Section "多语言：按需触发的极限严格检查"
@@ -202,26 +255,44 @@ if (Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*
 $hasJsTs = Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*.js", "*.jsx", "*.ts", "*.tsx")
 if ($hasJsTs) {
     Write-Section "JavaScript/TypeScript：Biome + Oxlint（极限严格）"
-    if ($null -eq (Get-Command "biome" -ErrorAction SilentlyContinue)) {
-        throw "检测到 JS/TS 代码，但未找到 biome。请安装 Biome 并确保 biome 在 PATH。"
+    Assert-Command -Name "node" -Hint "检测到 JS/TS 代码，但未找到 node。"
+
+    $biomeTool = Resolve-NodeTool -Name "biome" -RepoRoot $repoRoot -ExcludePathRegex $excludeRegex
+    if ($null -eq $biomeTool) {
+        throw "检测到 JS/TS 代码，但未找到 biome（建议在包含 package.json 的目录执行 npm install）。"
     }
-    if ($null -eq (Get-Command "oxlint" -ErrorAction SilentlyContinue)) {
-        throw "检测到 JS/TS 代码，但未找到 oxlint。请安装 oxlint 并确保 oxlint 在 PATH。"
+    $oxlintTool = Resolve-NodeTool -Name "oxlint" -RepoRoot $repoRoot -ExcludePathRegex $excludeRegex
+    if ($null -eq $oxlintTool) {
+        throw "检测到 JS/TS 代码，但未找到 oxlint（建议在包含 package.json 的目录执行 npm install）。"
     }
 
     Invoke-Checked -WorkDir $repoRoot -FailMessage "biome check 未通过。" -Command {
-        biome check .
+        & $biomeTool.Path check .
     }
     Invoke-Checked -WorkDir $repoRoot -FailMessage "oxlint 未通过。" -Command {
-        oxlint .
+        & $oxlintTool.Path .
     }
 
     if (Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*.ts", "*.tsx")) {
-        if ($null -eq (Get-Command "tsc" -ErrorAction SilentlyContinue)) {
-            throw "检测到 TypeScript 代码，但未找到 tsc（TypeScript 编译器）。"
+        $tscTool = Resolve-NodeTool -Name "tsc" -RepoRoot $repoRoot -ExcludePathRegex $excludeRegex
+        if ($null -eq $tscTool) {
+            throw "检测到 TypeScript 代码，但未找到 tsc（建议在包含 package.json 的目录执行 npm install）。"
         }
-        Invoke-Checked -WorkDir $repoRoot -FailMessage "tsc strict 未通过。" -Command {
-            tsc -p tsconfig.json --noEmit
+
+        $tsConfigs = @(
+            Get-ChildItem -Path $repoRoot -Recurse -File -Filter "tsconfig.json" -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch $excludeRegex } |
+                Where-Object { Test-Path -LiteralPath (Join-Path $_.Directory.FullName "package.json") }
+        )
+
+        if ($tsConfigs.Count -eq 0) {
+            throw "检测到 TypeScript 代码，但未找到可用的 tsconfig.json（要求与 package.json 同目录）。"
+        }
+
+        foreach ($cfg in $tsConfigs) {
+            Invoke-Checked -WorkDir $cfg.Directory.FullName -FailMessage ("tsc strict 未通过：{0}" -f $cfg.FullName) -Command {
+                & $tscTool.Path -p $cfg.FullName --noEmit
+            }
         }
     } else {
         Write-Host "TypeScript：跳过（未发现 *.ts / *.tsx）。" -ForegroundColor DarkGray
@@ -271,11 +342,13 @@ if ($hasCpp) {
 
 if (Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*.html", "*.htm")) {
     Write-Section "HTML：markuplint（极限严格）"
-    if ($null -eq (Get-Command "markuplint" -ErrorAction SilentlyContinue)) {
-        throw "检测到 HTML，但未找到 markuplint。"
+    Assert-Command -Name "node" -Hint "检测到 HTML，但未找到 node。"
+    $markuplintTool = Resolve-NodeTool -Name "markuplint" -RepoRoot $repoRoot -ExcludePathRegex $excludeRegex
+    if ($null -eq $markuplintTool) {
+        throw "检测到 HTML，但未找到 markuplint（建议在包含 package.json 的目录执行 npm install）。"
     }
     Invoke-Checked -WorkDir $repoRoot -FailMessage "markuplint 未通过。" -Command {
-        markuplint .
+        & $markuplintTool.Path .
     }
 } else {
     Write-Host "HTML：跳过（未发现 *.html）。" -ForegroundColor DarkGray
@@ -283,11 +356,17 @@ if (Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*
 
 if (Test-AnyFiles -Root $repoRoot -ExcludePathRegex $excludeRegex -Patterns @("*.css", "*.scss", "*.sass")) {
     Write-Section "CSS：stylelint（极限严格）"
-    if ($null -eq (Get-Command "stylelint" -ErrorAction SilentlyContinue)) {
-        throw "检测到 CSS/SCSS，但未找到 stylelint。"
+    Assert-Command -Name "node" -Hint "检测到 CSS/SCSS，但未找到 node。"
+    $stylelintTool = Resolve-NodeTool -Name "stylelint" -RepoRoot $repoRoot -ExcludePathRegex $excludeRegex
+    if ($null -eq $stylelintTool) {
+        throw "检测到 CSS/SCSS，但未找到 stylelint（建议在包含 package.json 的目录执行 npm install）。"
     }
     Invoke-Checked -WorkDir $repoRoot -FailMessage "stylelint 未通过。" -Command {
-        stylelint "**/*.css" "**/*.scss" "**/*.sass"
+        if ($null -eq $stylelintTool.BaseDir) {
+            & $stylelintTool.Path "**/*.css" "**/*.scss" "**/*.sass"
+        } else {
+            & $stylelintTool.Path --config (Join-Path $repoRoot ".stylelintrc") --config-basedir $stylelintTool.BaseDir "**/*.css" "**/*.scss" "**/*.sass"
+        }
     }
 } else {
     Write-Host "CSS：跳过（未发现 *.css/*.scss）。" -ForegroundColor DarkGray

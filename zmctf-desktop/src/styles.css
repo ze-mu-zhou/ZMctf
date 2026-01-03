@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --zm-bg: 0 0% 0%;
+  --zm-panel: 0 0% 4%;
+  --zm-border: 0 0% 12%;
+  --zm-text: 0 0% 90%;
+  --zm-muted: 0 0% 62%;
+  --zm-accent: 134 100% 50%;
+  --zm-cyan: 180 100% 50%;
+  --zm-magenta: 300 100% 50%;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: hsl(var(--zm-text));
+  background: radial-gradient(
+      900px circle at 12% 10%,
+      hsl(var(--zm-accent) / 12%),
+      transparent 45%
+    ),
+    radial-gradient(
+      900px circle at 88% 18%,
+      hsl(var(--zm-cyan) / 10%),
+      transparent 50%
+    ),
+    radial-gradient(
+      900px circle at 55% 92%,
+      hsl(var(--zm-magenta) / 8%),
+      transparent 55%
+    ), linear-gradient(180deg, #07090c, #000);
+  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+    "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+.zm-grid-overlay {
+  background-image: linear-gradient(
+      to right,
+      hsl(var(--zm-border) / 55%) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, hsl(var(--zm-border) / 35%) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 30%, #000 10%, transparent 65%);
+}
+
+.zm-scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 3.5%),
+    rgb(255 255 255 / 3.5%) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+@keyframes zm-pulse {
+  0% {
+    opacity: 0.65;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.65;
+  }
+}
+
+.zm-pulse {
+  animation: zm-pulse 1.6s ease-in-out infinite;
+}

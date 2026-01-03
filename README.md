@@ -5,7 +5,8 @@
 ## 目录结构
 
 - `flag-detector/core/`：Git submodule（模块 1：明文/常规编码 Flag 检测；workspace 内包含 `floss-integration` / `tool-runner` 等原子 crate）
-- `zmctf-desktop/`：桌面 GUI（主入口，后续将聚合更多模块）
+- `zmctf-desktop/`：桌面 GUI（主入口：Tauri + React + Tailwind）
+- `zmctf-desktop-legacy-egui/`：旧版 GUI（eframe/egui，已降级为可选）
 
 ## 子模块初始化
 
@@ -30,7 +31,8 @@ cargo run -p flag-detector --bin zmctf-server
 在 `zmctf-desktop/` 下运行：
 
 ```powershell
-cargo run
+npm install
+npm run tauri dev
 ```
 
 ## 最严格自检（每次写代码后必跑）

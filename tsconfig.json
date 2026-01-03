@@ -10,4 +10,3 @@
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/target/**"]
 }
-
