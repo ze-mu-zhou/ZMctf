@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "character-reference": true,
+    "doctype": true,
+    "id-duplication": true,
+    "deprecated-element": true,
+    "permitted-contents": true,
+    "wai-aria": true
+  }
+}
+

@@ -1,0 +1,26 @@
+---
+APPLY_FIXES: none
+VALIDATE_ALL_CODEBASE: true
+IGNORE_GITIGNORED_FILES: true
+SHOW_ELAPSED_TIME: true
+CLEAR_REPORT_FOLDER: true
+FAIL_IF_MISSING_LINTER_IN_FLAVOR: true
+
+ENABLE:
+  - YAML
+  - JSON
+  - TOML
+
+ADDITIONAL_EXCLUDED_DIRECTORIES:
+  - target
+  - vendor
+  - node_modules
+  - dist
+  - build
+  - megalinter-reports
+
+DISABLE_LINTERS:
+  - JSON_V8R
+  - JSON_PRETTIER
+  - YAML_PRETTIER
+  - YAML_V8R

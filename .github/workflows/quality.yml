@@ -1,0 +1,45 @@
+---
+name: quality
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request: {}
+
+permissions:
+  contents: read
+
+jobs:
+  megalinter:
+    name: megalinter
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+      - name: run
+        uses: oxsecurity/megalinter/flavors/ci_light@55a59b24a441e0e1943080d4a512d827710d4a9d
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  verify_windows:
+    name: verify_windows
+    runs-on: windows-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          submodules: recursive
+      - name: setup_rust
+        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7
+        with:
+          components: clippy, rustfmt
+      - name: verify
+        shell: pwsh
+        env:
+          ZMCTF_CI_PREFETCH: "1"
+          ZMCTF_SKIP_MEGALINTER: "1"
+        run: .\\scripts\\verify.ps1

@@ -1,0 +1,14 @@
+---
+linters:
+  enable-all: true
+  disable:
+    - depguard
+    - tagalign
+
+linters-settings:
+  cyclop:
+    max-complexity: 10
+  funlen:
+    lines: 60
+  gocognit:
+    min-complexity: 10

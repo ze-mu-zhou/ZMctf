@@ -1,0 +1,9 @@
+---
+Checks: '*, -abseil-*, -fuchsia-*, -llvmlibc-*'
+WarningsAsErrors: '*'
+
+CheckOptions:
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnoreIntegerValues
+    value: '0;1'
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 10

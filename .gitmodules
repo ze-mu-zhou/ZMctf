@@ -1,0 +1,3 @@
+[submodule "flag-detector/core"]
+	path = flag-detector/core
+	url = https://github.com/ze-mu-zhou/zmctf-flag-detector-core.git
