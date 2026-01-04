@@ -1,34 +1,175 @@
 import { type ReactElement, useRef, useState } from "react";
 
 import type { AnalyzeResponse } from "../lib/api";
-import { analyzeText } from "../lib/api";
+import { analyzeBytes, analyzeText } from "../lib/api";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { CopyButton } from "./CopyButton";
+import { Input } from "./Input";
 import { Textarea } from "./Textarea";
 
 const SAMPLE = `这是一个测试：
 flag{test123}
 还有一个 rot13：synt{grfg123}`;
 
+type InputMode = "text" | "file";
+
+function toErrorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : "未知错误";
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("读取文件失败。"));
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("读取结果不是字符串。"));
+        return;
+      }
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function runAnalyzeRequest(params: {
+  baseUrl: string;
+  mode: InputMode;
+  input: string;
+  file: File | null;
+  signal: AbortSignal;
+}): Promise<AnalyzeResponse> {
+  if (params.mode === "text") {
+    const content = params.input.trim();
+    if (!content) {
+      throw new Error("请输入待分析内容。");
+    }
+    return analyzeText(params.baseUrl, { content, mode: null }, params.signal);
+  }
+
+  const selectedFile = params.file;
+  if (!selectedFile) {
+    throw new Error("请选择要分析的文件。");
+  }
+  const dataBase64 = await readFileAsBase64(selectedFile);
+  return analyzeBytes(
+    params.baseUrl,
+    { dataBase64, fileName: selectedFile.name, mode: null },
+    params.signal,
+  );
+}
+
+function InputCard(props: {
+  mode: InputMode;
+  busy: boolean;
+  input: string;
+  file: File | null;
+  error: string | null;
+  onSelectMode: (next: InputMode) => void;
+  onChangeInput: (next: string) => void;
+  onChangeFile: (next: File | null) => void;
+  onFillSample: () => void;
+  onAnalyze: () => void;
+}): ReactElement {
+  const isText = props.mode === "text";
+  return (
+    <Card className="relative overflow-hidden p-4">
+      <div className="absolute inset-0 zm-grid-overlay opacity-20" />
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-medium text-text">输入</div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isText ? "primary" : "outline"}
+              onClick={() => props.onSelectMode("text")}
+              disabled={props.busy}
+            >
+              文本
+            </Button>
+            <Button
+              variant={isText ? "outline" : "primary"}
+              onClick={() => props.onSelectMode("file")}
+              disabled={props.busy}
+            >
+              文件
+            </Button>
+            <Button
+              variant="outline"
+              onClick={props.onFillSample}
+              disabled={props.busy || !isText}
+            >
+              填充示例
+            </Button>
+            <Button onClick={props.onAnalyze} disabled={props.busy}>
+              {props.busy ? "分析中…" : "开始分析"}
+            </Button>
+          </div>
+        </div>
+
+        {isText ? (
+          <div className="mt-3">
+            <Textarea
+              value={props.input}
+              onChange={(e) => props.onChangeInput(e.target.value)}
+              placeholder="粘贴文本 / 解码链产物 / 还原的协议内容等…"
+              rows={8}
+            />
+          </div>
+        ) : (
+          <div className="mt-3 rounded-xl border border-border/60 bg-bg/20 p-3">
+            <div className="text-xs text-muted">选择文件</div>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                type="file"
+                onChange={(e) =>
+                  props.onChangeFile(e.target.files?.item(0) ?? null)
+                }
+              />
+              <div className="min-w-0 text-xs text-muted">
+                {props.file
+                  ? `${props.file.name} · ${props.file.size} bytes`
+                  : "未选择"}
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-muted">
+              说明：当前走{" "}
+              <span className="font-mono text-text">/api/analyze_bytes</span>
+              （Base64），不会让后端直接读取你的磁盘路径。
+            </div>
+          </div>
+        )}
+
+        {props.error ? (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mt-3 rounded-lg border border-magenta/35 bg-magenta/10 px-3 py-2 text-sm text-magenta"
+          >
+            {props.error}
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
 export function FlagDetectorPanel(props: {
   apiBaseUrl: string;
 }): ReactElement {
+  const [mode, setMode] = useState<InputMode>("text");
   const [input, setInput] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resp, setResp] = useState<AnalyzeResponse | null>(null);
 
   const controllerRef = useRef<AbortController | null>(null);
 
-  const onAnalyze = async (): Promise<void> => {
-    const content = input.trim();
-    if (!content) {
-      setError("请输入待分析内容。");
-      return;
-    }
-
+  const onAnalyze = (): void => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -37,19 +178,16 @@ export function FlagDetectorPanel(props: {
     setError(null);
     setResp(null);
 
-    try {
-      const data = await analyzeText(
-        props.apiBaseUrl,
-        { content, mode: null },
-        controller.signal,
-      );
-      setResp(data);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "未知错误";
-      setError(`分析失败：${msg}`);
-    } finally {
-      setBusy(false);
-    }
+    runAnalyzeRequest({
+      baseUrl: props.apiBaseUrl,
+      mode,
+      input,
+      file,
+      signal: controller.signal,
+    })
+      .then(setResp)
+      .catch((e) => setError(`分析失败：${toErrorMessage(e)}`))
+      .finally(() => setBusy(false));
   };
 
   const summary = resp
@@ -58,50 +196,18 @@ export function FlagDetectorPanel(props: {
 
   return (
     <div className="mt-6 space-y-4">
-      <Card className="relative overflow-hidden p-4">
-        <div className="absolute inset-0 zm-grid-overlay opacity-20" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-medium text-text">输入</div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setInput(SAMPLE)}
-                disabled={busy}
-              >
-                填充示例
-              </Button>
-              <Button
-                onClick={() => {
-                  onAnalyze().catch(() => undefined);
-                }}
-                disabled={busy}
-              >
-                {busy ? "分析中…" : "开始分析"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="粘贴文本 / 解码链产物 / 还原的协议内容等…"
-              rows={8}
-            />
-          </div>
-
-          {error ? (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="mt-3 rounded-lg border border-magenta/35 bg-magenta/10 px-3 py-2 text-sm text-magenta"
-            >
-              {error}
-            </div>
-          ) : null}
-        </div>
-      </Card>
+      <InputCard
+        mode={mode}
+        busy={busy}
+        input={input}
+        file={file}
+        error={error}
+        onSelectMode={setMode}
+        onChangeInput={setInput}
+        onChangeFile={setFile}
+        onFillSample={() => setInput(SAMPLE)}
+        onAnalyze={onAnalyze}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4">
@@ -186,7 +292,7 @@ export function FlagDetectorPanel(props: {
           </Badge>
         </div>
 
-        <div className="mt-3 max-h-[260px] overflow-auto rounded-xl border border-border/60 bg-bg/20 p-3 font-mono text-xs">
+        <div className="mt-3 max-h-[260px] overflow-auto rounded-xl border border-border/60 bg-bg/20 p-3 text-xs">
           {resp && resp.logs.length > 0 ? (
             resp.logs.map((l) => {
               const key = `${l.timestamp}::${l.module}::${l.level}::${l.action}`;

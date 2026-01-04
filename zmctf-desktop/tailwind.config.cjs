@@ -1,8 +1,19 @@
 /** @type {import("tailwindcss").Config} */
+const defaultTheme = require("tailwindcss/defaultTheme");
+
 module.exports = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        mono: [
+          ...defaultTheme.fontFamily.mono,
+          "Microsoft YaHei UI",
+          "Microsoft YaHei",
+          "SimHei",
+          "SimSun",
+        ],
+      },
       colors: {
         bg: "hsl(var(--zm-bg))",
         panel: "hsl(var(--zm-panel))",

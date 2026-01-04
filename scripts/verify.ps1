@@ -114,9 +114,19 @@ function Invoke-Checked {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$excludeRegex = '[\\/](\.git|target|node_modules|\.venv|\.mypy_cache|\.ruff_cache|\.npm-cache|dist|build|vendor|megalinter-reports)[\\/]'
+$excludeRegex = '[\\/](\.git|target|\.cargo-target|node_modules|\.venv|\.mypy_cache|\.ruff_cache|\.npm-cache|dist|build|vendor|megalinter-reports)[\\/]'
 $prefetch = $env:ZMCTF_CI_PREFETCH -eq "1"
 $skipMegaLinter = $env:ZMCTF_SKIP_MEGALINTER -eq "1"
+
+$env:CARGO_INCREMENTAL = "0"
+$cargoTargetRoot = if ($env:ZMCTF_CARGO_TARGET_DIR) { $env:ZMCTF_CARGO_TARGET_DIR } else { Join-Path $env:TEMP "zmctf_cargo_target" }
+$flagDetectorTarget = Join-Path $cargoTargetRoot "flag-detector-core"
+$tauriTarget = Join-Path $cargoTargetRoot "zmctf-desktop-tauri"
+$legacyEguiTarget = Join-Path $cargoTargetRoot "zmctf-desktop-legacy-egui"
+
+if (-not (Test-Path -LiteralPath $cargoTargetRoot)) {
+    New-Item -ItemType Directory -Path $cargoTargetRoot -Force | Out-Null
+}
 
 Assert-Command -Name "cargo" -Hint "未找到 cargo（需要 Rust 工具链）。"
 
@@ -137,7 +147,9 @@ $clippyLog = Join-Path $repoRoot "clippy_flag_detector.log"
 Push-Location (Join-Path $repoRoot "flag-detector/core")
 try {
     $clippyCmd =
-        'cargo clippy --workspace --all-targets --all-features --locked --offline -- ' +
+        'cargo clippy --target-dir "' +
+        $flagDetectorTarget +
+        '" --workspace --all-targets --all-features --locked --offline -- ' +
         '-D warnings -D clippy::all -D clippy::pedantic -D clippy::nursery -D clippy::cargo ' +
         '> "' +
         $clippyLog +
@@ -161,7 +173,7 @@ try {
 
 Write-Section "Rust: flag-detector/core（全量测试）"
 Invoke-Checked -WorkDir (Join-Path $repoRoot "flag-detector/core") -FailMessage "cargo test 未通过（flag-detector/core）。" -Command {
-    cargo test --workspace --all-features --locked --offline
+    cargo test --target-dir $flagDetectorTarget --workspace --all-features --locked --offline
 }
 
 Write-Section "Rust: 规避检查扫描（禁止 #[allow(clippy::...)]）"
@@ -188,7 +200,7 @@ Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMes
     cargo fmt --all -- --check
 }
 Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "clippy 未通过（zmctf-desktop/src-tauri）。" -Command {
-    cargo clippy --all-targets --all-features --locked --offline -- `
+    cargo clippy --target-dir $tauriTarget --all-targets --all-features --locked --offline -- `
         -D warnings `
         -D clippy::all `
         -D clippy::pedantic `
@@ -197,7 +209,7 @@ Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMes
         -A clippy::multiple_crate_versions
 }
 Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop/src-tauri") -FailMessage "cargo test 未通过（zmctf-desktop/src-tauri）。" -Command {
-    cargo test --all-features --locked --offline
+    cargo test --target-dir $tauriTarget --all-features --locked --offline
 }
 
 if (Test-Path -LiteralPath (Join-Path $repoRoot "zmctf-desktop-legacy-egui/Cargo.toml")) {
@@ -212,7 +224,7 @@ if (Test-Path -LiteralPath (Join-Path $repoRoot "zmctf-desktop-legacy-egui/Cargo
         cargo fmt --all -- --check
     }
     Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "clippy 未通过（zmctf-desktop-legacy-egui）。" -Command {
-        cargo clippy --all-targets --all-features --locked --offline -- `
+        cargo clippy --target-dir $legacyEguiTarget --all-targets --all-features --locked --offline -- `
             -D warnings `
             -D clippy::all `
             -D clippy::pedantic `
@@ -221,7 +233,7 @@ if (Test-Path -LiteralPath (Join-Path $repoRoot "zmctf-desktop-legacy-egui/Cargo
             -A clippy::multiple_crate_versions
     }
     Invoke-Checked -WorkDir (Join-Path $repoRoot "zmctf-desktop-legacy-egui") -FailMessage "cargo test 未通过（zmctf-desktop-legacy-egui）。" -Command {
-        cargo test --all-features --locked --offline
+        cargo test --target-dir $legacyEguiTarget --all-features --locked --offline
     }
 } else {
     Write-Host "Rust: zmctf-desktop-legacy-egui：跳过（未发现）。" -ForegroundColor DarkGray

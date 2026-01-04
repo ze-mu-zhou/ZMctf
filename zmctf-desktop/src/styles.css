@@ -36,9 +36,10 @@ body {
       hsl(var(--zm-magenta) / 8%),
       transparent 55%
     ), linear-gradient(180deg, #07090c, #000);
-  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
-    "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", SimHei, SimSun,
+    "PingFang SC", "Noto Sans SC", "WenQuanYi Micro Hei", system-ui,
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
 }
 
 .zm-grid-overlay {
