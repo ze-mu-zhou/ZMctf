@@ -2,12 +2,19 @@
 
 #include <algorithm>
 #include <array>
+#include <barrier>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iterator>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifdef _WIN32
@@ -40,6 +47,9 @@ using cl_mem = void *;
 constexpr cl_int CL_SUCCESS = 0;
 constexpr cl_device_type CL_DEVICE_TYPE_GPU = 1ull << 2;
 constexpr cl_uint CL_DEVICE_MAX_COMPUTE_UNITS = 0x1002;
+constexpr cl_uint CL_DEVICE_MAX_CLOCK_FREQUENCY = 0x100C;
+constexpr cl_uint CL_DEVICE_NAME = 0x102B;
+constexpr cl_uint CL_DRIVER_VERSION = 0x102D;
 constexpr cl_uint CL_PROGRAM_BUILD_LOG = 0x1183;
 constexpr cl_bitfield CL_MEM_READ_WRITE = 1;
 constexpr cl_bitfield CL_MEM_READ_ONLY = 1 << 2;
@@ -119,28 +129,72 @@ const Cl &cl_api() {
   return cl;
 }
 
-cl_device_id find_gpu(cl_platform_id *platform_out = nullptr) {
+struct GpuDeviceInfo {
+  cl_platform_id platform = nullptr;
+  cl_device_id device = nullptr;
+  cl_uint units = 0;
+  cl_uint clock_mhz = 0;
+  std::string name;
+  std::string driver;
+  std::uint64_t weight() const {  // rough throughput estimate for chunk sizing
+    return static_cast<std::uint64_t>(units ? units : 1) * (clock_mhz ? clock_mhz : 1000);
+  }
+};
+
+std::vector<GpuDeviceInfo> find_gpus() {
   const Cl &cl = cl_api();
   cl_uint nplatforms = 0;
-  if (cl.GetPlatformIDs(0, nullptr, &nplatforms) != CL_SUCCESS || !nplatforms) return nullptr;
+  if (cl.GetPlatformIDs(0, nullptr, &nplatforms) != CL_SUCCESS || !nplatforms) return {};
   std::vector<cl_platform_id> platforms(nplatforms);
   cl.GetPlatformIDs(nplatforms, platforms.data(), nullptr);
-  cl_device_id best = nullptr;
-  cl_platform_id best_platform = nullptr;
-  cl_uint best_units = 0;
+  std::vector<GpuDeviceInfo> gpus;
   for (const auto platform : platforms) {
     cl_uint ndev = 0;
     if (cl.GetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, nullptr, &ndev) != CL_SUCCESS || !ndev) continue;
     std::vector<cl_device_id> devices(ndev);
     cl.GetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, ndev, devices.data(), nullptr);
     for (const auto device : devices) {
-      cl_uint units = 0;
-      cl.GetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(units), &units, nullptr);
-      if (units > best_units) { best = device; best_platform = platform; best_units = units; }
+      GpuDeviceInfo info;
+      info.platform = platform;
+      info.device = device;
+      cl.GetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(info.units), &info.units, nullptr);
+      cl.GetDeviceInfo(device, CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(info.clock_mhz), &info.clock_mhz, nullptr);
+      char name[256] = {};
+      if (cl.GetDeviceInfo(device, CL_DEVICE_NAME, sizeof(name) - 1, name, nullptr) == CL_SUCCESS)
+        info.name = name;
+      char driver[64] = {};
+      if (cl.GetDeviceInfo(device, CL_DRIVER_VERSION, sizeof(driver) - 1, driver, nullptr) == CL_SUCCESS)
+        info.driver = driver;
+      gpus.push_back(std::move(info));
     }
   }
-  if (platform_out) *platform_out = best_platform;
-  return best;
+  std::sort(gpus.begin(), gpus.end(),
+            [](const GpuDeviceInfo &a, const GpuDeviceInfo &b) { return a.units > b.units; });
+  return gpus;
+}
+
+// ZM_GPUS=0,2,... picks devices by index (as sorted by find_gpus), for
+// launch-tuning experiments; unset means "all GPUs".
+std::vector<GpuDeviceInfo> select_gpus(std::vector<GpuDeviceInfo> gpus) {
+  const char *e = std::getenv("ZM_GPUS");
+  if (!e || !*e) return gpus;
+  std::vector<GpuDeviceInfo> picked;
+  const std::string spec = e;
+  std::size_t pos = 0;
+  while (pos <= spec.size()) {
+    const auto comma = spec.find(',', pos);
+    const auto token = spec.substr(pos, comma == std::string::npos ? std::string::npos : comma - pos);
+    const long idx = token.empty() ? -1 : std::strtol(token.c_str(), nullptr, 10);
+    if (idx >= 0 && static_cast<std::size_t>(idx) < gpus.size()) {
+      const auto dev = gpus[static_cast<std::size_t>(idx)].device;
+      const auto dup = std::find_if(picked.begin(), picked.end(),
+                                    [&](const GpuDeviceInfo &g) { return g.device == dev; });
+      if (dup == picked.end()) picked.push_back(std::move(gpus[static_cast<std::size_t>(idx)]));
+    }
+    if (comma == std::string::npos) break;
+    pos = comma + 1;
+  }
+  return picked;
 }
 
 void cl_check(cl_int err, const char *what) {
@@ -180,20 +234,68 @@ constexpr unsigned md5_word(unsigned i) {
                     : (7 * i) % 16;
 }
 
-// Vector width of the generated kernel (candidates per thread iteration).
-// Measured on sm_89 (RTX 4060 Laptop): VEC=16 @ 158 regs beats VEC=8 @ 72
-// regs by ~1.4% despite lower occupancy — ILP wins for MD5. ZM_VEC/ZM_LOCAL
-// allow launch-tuning experiments without recompiling.
-unsigned vec_width() {
-  const char *e = std::getenv("ZM_VEC");
-  const unsigned v = e ? static_cast<unsigned>(std::atoi(e)) : 16;
-  return (v == 4 || v == 8 || v == 16) ? v : 16;
+// Launch-parameter resolution: ZM_VEC/ZM_LOCAL > autotune cache > defaults.
+// Defaults measured on sm_89 (RTX 4060 Laptop): VEC=16 @ 158 regs beats VEC=8
+// @ 72 regs by ~1.4% despite lower occupancy — ILP wins for MD5.
+// env_tune returns 0 when the variable is unset or holds an invalid value.
+unsigned env_tune(const char *name, std::initializer_list<unsigned> valid) {
+  const char *e = std::getenv(name);
+  if (!e || !*e) return 0;
+  const unsigned v = static_cast<unsigned>(std::atoi(e));
+  for (const unsigned x : valid) if (x == v) return v;
+  return 0;
 }
 
-unsigned local_size_cfg() {
-  const char *e = std::getenv("ZM_LOCAL");
-  const unsigned v = e ? static_cast<unsigned>(std::atoi(e)) : 256;
-  return (v == 128 || v == 256 || v == 512) ? v : 256;
+std::filesystem::path tune_cache_dir() {
+#ifdef _WIN32
+  if (const char *p = std::getenv("LOCALAPPDATA"); p && *p) return std::filesystem::path(p) / "zm-hash";
+#else
+  if (const char *p = std::getenv("XDG_CACHE_HOME"); p && *p) return std::filesystem::path(p) / "zm-hash";
+  if (const char *p = std::getenv("HOME"); p && *p) return std::filesystem::path(p) / ".cache" / "zm-hash";
+#endif
+  return {};
+}
+
+// Cache line format: "<device name> | <driver version>\t<vec>\t<local>".
+std::string tune_key(const GpuDeviceInfo &dev) { return dev.name + " | " + dev.driver; }
+
+std::optional<GpuTuning> tune_cache_lookup(const std::string &key) {
+  const auto dir = tune_cache_dir();
+  if (dir.empty()) return std::nullopt;
+  std::ifstream f(dir / "autotune.cache");
+  std::string line;
+  while (std::getline(f, line)) {
+    const auto p1 = line.rfind('\t');
+    if (p1 == std::string::npos || p1 == 0) continue;
+    const auto p0 = line.rfind('\t', p1 - 1);
+    if (p0 == std::string::npos || line.substr(0, p0) != key) continue;
+    const unsigned vec = static_cast<unsigned>(std::atoi(line.c_str() + p0 + 1));
+    const unsigned local = static_cast<unsigned>(std::atoi(line.c_str() + p1 + 1));
+    if ((vec == 4 || vec == 8 || vec == 16) && (local == 128 || local == 256 || local == 512))
+      return GpuTuning{vec, local};
+  }
+  return std::nullopt;
+}
+
+void tune_cache_store(const std::string &key, const GpuTuning &tuning) {
+  const auto dir = tune_cache_dir();
+  if (dir.empty()) return;
+  std::error_code ec;
+  std::filesystem::create_directories(dir, ec);
+  if (ec) return;
+  const auto path = dir / "autotune.cache";
+  std::vector<std::string> lines;
+  {
+    std::ifstream f(path);
+    std::string line;
+    while (std::getline(f, line)) {
+      const auto tab = line.find('\t');
+      if (!line.empty() && (tab == std::string::npos || line.substr(0, tab) != key)) lines.push_back(line);
+    }
+  }
+  lines.push_back(key + '\t' + std::to_string(tuning.vec) + '\t' + std::to_string(tuning.local));
+  std::ofstream f(path, std::ios::trunc);
+  for (const auto &line : lines) f << line << '\n';
 }
 
 const char *KERNEL_HEAD = R"OPENCL(
@@ -470,199 +572,406 @@ bool gpu_available() noexcept {
   static const bool ok = [] {
     const Cl &cl = cl_api();
     if (!cl.GetPlatformIDs) return false;
-    return find_gpu() != nullptr;
+    return !find_gpus().empty();
   }();
   return ok;
 }
 
-GpuMatchResult gpu_match(const GpuMatchParams &params) {
+namespace {
+
+// Everything one worker thread needs to drive one GPU: same per-launch shape
+// as the former single-device path, but chunks are pulled from a shared root
+// cursor so faster devices naturally claim more of the space.
+struct LaunchShape {
+  std::size_t n_inner = 0;
+  std::uint64_t inner_count = 1;
+  std::uint64_t stride = 1;
+  std::uint64_t roots_total = 0;
+  std::uint32_t max_hits = 0;
+  unsigned vec = 16;
+  unsigned local = 256;
+  std::string source;
+  std::vector<std::array<std::uint32_t, 2>> cvt;
+  std::vector<std::uint32_t> inner_tab;
+};
+
+struct SharedState {
+  const std::uint64_t roots_total;
+  const std::uint32_t max_hits;
+  const std::uint64_t max_weight;
+  const std::atomic<bool> *interrupted;
+  std::atomic<std::uint64_t> next_root{0};
+  std::atomic<std::uint64_t> total_hits{0};
+  std::atomic<bool> stop{false};
+};
+
+struct DeviceWork {
+  std::uint64_t processed = 0;
+  std::uint64_t hit_total = 0;
+  std::vector<GpuMatchHit> hits;
+  std::chrono::steady_clock::time_point first_launch{};
+  std::chrono::steady_clock::time_point last_finish{};
+  std::string error;
+};
+
+void run_device(const Cl &cl, const GpuDeviceInfo &dev, const GpuMatchParams &params,
+                const LaunchShape &shape, SharedState &shared, DeviceWork &out,
+                std::barrier<> &sync, const char *dump) {
+  // Phase 1: context/queue/program/buffers, per device in parallel. The
+  // barrier afterwards keeps a slow JIT (e.g. an iGPU compiler) from
+  // missing the whole search on short runs.
+  cl_context context = nullptr;
+  cl_command_queue queue = nullptr;
+  cl_program program = nullptr;
+  cl_kernel kernel = nullptr;
+  size_t local_size = 0;
+  bool ready = false;
+  {
+    ClMem cvt_mem(&cl), cst_mem(&cl), tab_mem(&cl);
+    ClMem count_mem(&cl), index_mem(&cl), digest_mem(&cl);
+    try {
+      cl_int err = CL_SUCCESS;
+      context = cl.CreateContext(nullptr, 1, &dev.device, nullptr, nullptr, &err);
+      cl_check(err, "clCreateContext");
+      queue = cl.CreateCommandQueue(context, dev.device, 0, &err);
+      cl_check(err, "clCreateCommandQueue");
+
+      const char *source_cstr = shape.source.c_str();
+      const size_t source_len = shape.source.size();
+      program = cl.CreateProgramWithSource(context, 1, &source_cstr, &source_len, &err);
+      cl_check(err, "clCreateProgramWithSource");
+      // -cl-nv-verbose puts ptxas' register/spill report into the build log;
+      // enabled together with ZM_DUMP_KERNEL (log lands in <dump>.log, only
+      // for the first device to avoid racing on the file).
+      err = cl.BuildProgram(program, 1, &dev.device, dump ? "-cl-nv-verbose" : nullptr, nullptr, nullptr);
+      if (dump || err != CL_SUCCESS) {
+        size_t log_size = 0;
+        cl.GetProgramBuildInfo(program, dev.device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
+        std::string log(log_size, '\0');
+        cl.GetProgramBuildInfo(program, dev.device, CL_PROGRAM_BUILD_LOG, log.size(), log.data(), nullptr);
+        if (err != CL_SUCCESS) throw std::runtime_error("OpenCL 内核编译失败：" + log);
+        const std::string logpath = std::string(dump) + ".log";
+        if (FILE *f = std::fopen(logpath.c_str(), "w")) { std::fwrite(log.data(), 1, log.size(), f); std::fclose(f); }
+      }
+      kernel = cl.CreateKernel(program, "zm_md5_match", &err);
+      cl_check(err, "clCreateKernel");
+
+      auto make_ro = [&](const void *data, size_t size) {
+        cl_int e = CL_SUCCESS;
+        const std::uint8_t dummy = 0;
+        if (size == 0) { data = &dummy; size = 1; }
+        cl_mem m = cl.CreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, const_cast<void *>(data), &e);
+        cl_check(e, "clCreateBuffer");
+        return m;
+      };
+      cvt_mem.mem = make_ro(shape.cvt.data(), shape.cvt.size() * sizeof(shape.cvt[0]));
+      cst_mem.mem = make_ro(params.chars.data(), params.chars.size());
+      tab_mem.mem = make_ro(shape.inner_tab.data(), shape.inner_tab.size() * sizeof(std::uint32_t));
+      const std::uint32_t zero = 0;
+      count_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(zero), const_cast<std::uint32_t *>(&zero), &err);
+      cl_check(err, "clCreateBuffer hit_count");
+      index_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE, sizeof(std::uint64_t) * shape.max_hits, nullptr, &err);
+      cl_check(err, "clCreateBuffer hit_index");
+      digest_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE, 16 * shape.max_hits, nullptr, &err);
+      cl_check(err, "clCreateBuffer hit_digest");
+
+      auto set_u32 = [&](cl_uint n, std::uint32_t v) { cl_check(cl.SetKernelArg(kernel, n, sizeof(v), &v), "clSetKernelArg"); };
+      auto set_u64 = [&](cl_uint n, std::uint64_t v) { cl_check(cl.SetKernelArg(kernel, n, sizeof(v), &v), "clSetKernelArg"); };
+      auto set_mem = [&](cl_uint n, cl_mem m) { cl_check(cl.SetKernelArg(kernel, n, sizeof(m), &m), "clSetKernelArg"); };
+      set_u64(2, shape.inner_count);
+      set_u64(3, shape.stride);
+      for (cl_uint i = 0; i != 4; ++i) {
+        set_u32(4 + i, params.value[i]);
+        set_u32(8 + i, params.mask[i]);
+      }
+      set_mem(12, cvt_mem.mem);
+      set_mem(13, cst_mem.mem);
+      set_mem(14, tab_mem.mem);
+      set_u32(15, static_cast<std::uint32_t>(shape.n_inner));
+      set_u32(16, shape.max_hits);
+      set_mem(17, count_mem.mem);
+      set_mem(18, index_mem.mem);
+      set_mem(19, digest_mem.mem);
+
+      // VEC=16 needs 158 regs/thread; 512-thread blocks would exceed the 64K
+      // register file (CL_OUT_OF_RESOURCES), so clamp the block size there.
+      local_size = shape.local;
+      if (shape.vec == 16 && local_size > 256) local_size = 256;
+      ready = true;
+    } catch (const std::exception &e) {
+      out.error = e.what();
+    } catch (...) {
+      out.error = "未知错误";
+    }
+
+    sync.arrive_and_wait();
+    if (!ready) {
+      if (kernel) cl.ReleaseKernel(kernel);
+      if (program) cl.ReleaseProgram(program);
+      if (queue) cl.ReleaseCommandQueue(queue);
+      if (context) cl.ReleaseContext(context);
+      return;
+    }
+
+    // Phase 2: dynamic work stealing. Each device pulls root chunks off the
+    // shared cursor, sized adaptively toward ~200 ms per launch; the initial
+    // chunk is scaled by a units*clock weight so a slow iGPU's first launch
+    // does not strand the tail while its size estimate catches up.
+    std::uint64_t chunk = std::clamp<std::uint64_t>(
+        ((std::uint64_t{1} << 31) / shape.inner_count) * dev.weight() / shared.max_weight,
+        1 << 10, 1 << 16);
+    auto set_u64 = [&](cl_uint n, std::uint64_t v) { cl_check(cl.SetKernelArg(kernel, n, sizeof(v), &v), "clSetKernelArg"); };
+    bool started = false;
+    try {
+      while (!shared.stop.load(std::memory_order_relaxed)) {
+        const std::uint64_t base = shared.next_root.fetch_add(chunk, std::memory_order_relaxed);
+        if (base >= shape.roots_total) break;
+        const std::uint64_t roots_this = std::min(chunk, shape.roots_total - base);
+        set_u64(0, base);
+        set_u64(1, roots_this);
+        const size_t global_size = static_cast<size_t>((roots_this + local_size - 1) / local_size) * local_size;
+        const auto launch_start = std::chrono::steady_clock::now();
+        cl_check(cl.EnqueueNDRangeKernel(queue, kernel, 1, nullptr, &global_size, &local_size, 0, nullptr, nullptr),
+                 "clEnqueueNDRangeKernel");
+        cl_check(cl.Finish(queue), "clFinish");
+        const auto launch_end = std::chrono::steady_clock::now();
+        if (!started) { out.first_launch = launch_start; started = true; }
+        out.last_finish = launch_end;
+        out.processed += roots_this * shape.inner_count;
+        std::uint32_t hits = 0;
+        cl_check(cl.EnqueueReadBuffer(queue, count_mem.mem, CL_TRUE, 0, sizeof(hits), &hits, 0, nullptr, nullptr),
+                 "clEnqueueReadBuffer");
+        const std::uint64_t delta = hits - out.hit_total;
+        out.hit_total = hits;
+        if (delta && shared.total_hits.fetch_add(delta, std::memory_order_relaxed) + delta >= shared.max_hits)
+          shared.stop.store(true, std::memory_order_relaxed);
+        if (shared.interrupted && shared.interrupted->load(std::memory_order_relaxed)) {
+          shared.stop.store(true, std::memory_order_relaxed);
+          break;
+        }
+        const double dt = std::chrono::duration<double>(launch_end - launch_start).count();
+        if (dt > 1e-9) {
+          const double f = std::clamp(0.2 / dt, 0.5, 2.0);
+          chunk = std::clamp<std::uint64_t>(static_cast<std::uint64_t>(static_cast<double>(chunk) * f),
+                                            1 << 10, 1 << 24);
+        }
+      }
+
+      const std::uint32_t stored = static_cast<std::uint32_t>(std::min<std::uint64_t>(out.hit_total, shape.max_hits));
+      if (stored) {
+        std::vector<std::uint64_t> indices(stored);
+        std::vector<std::array<std::uint32_t, 4>> digests(stored);
+        cl_check(cl.EnqueueReadBuffer(queue, index_mem.mem, CL_TRUE, 0, stored * sizeof(std::uint64_t), indices.data(), 0, nullptr, nullptr),
+                 "clEnqueueReadBuffer hits");
+        cl_check(cl.EnqueueReadBuffer(queue, digest_mem.mem, CL_TRUE, 0, stored * 16, digests.data(), 0, nullptr, nullptr),
+                 "clEnqueueReadBuffer digests");
+        out.hits.resize(stored);
+        for (std::uint32_t i = 0; i != stored; ++i) out.hits[i] = GpuMatchHit{indices[i], digests[i]};
+      }
+    } catch (const std::exception &e) {
+      out.error = e.what();
+    } catch (...) {
+      out.error = "未知错误";
+    }
+  }
+  if (kernel) cl.ReleaseKernel(kernel);
+  if (program) cl.ReleaseProgram(program);
+  if (queue) cl.ReleaseCommandQueue(queue);
+  if (context) cl.ReleaseContext(context);
+}
+
+GpuMatchResult gpu_match_impl(const GpuMatchParams &params, const std::vector<GpuDeviceInfo> &devices,
+                              unsigned vec, unsigned local, bool quiet) {
   const Cl &cl = cl_api();
   if (!cl.GetPlatformIDs) throw std::runtime_error("OpenCL 不可用");
-  cl_platform_id platform = nullptr;
-  cl_device_id device = find_gpu(&platform);
-  if (!device) throw std::runtime_error("未找到 GPU 设备");
 
   const auto L = static_cast<std::size_t>(params.length);
 
   // Inner loop = leading candidate bytes (all inside message word 0, at most 4
   // positions, product capped), so the kernel can fold every other message
   // word into per-step constants and reverse round 4 for exact targets.
-  std::size_t n_inner = 0;
-  std::uint64_t inner_count = 1;
-  while (n_inner < L && n_inner < 4 && inner_count <= 65536 / params.radix[n_inner]) {
-    inner_count *= params.radix[n_inner];
-    ++n_inner;
+  LaunchShape shape;
+  while (shape.n_inner < L && shape.n_inner < 4 &&
+         shape.inner_count <= 65536 / params.radix[shape.n_inner]) {
+    shape.inner_count *= params.radix[shape.n_inner];
+    ++shape.n_inner;
   }
-  if (n_inner == 0 && L > 0) throw std::runtime_error("GPU 路径要求每个位置基数 ≤ 65536");
+  if (shape.n_inner == 0 && L > 0) throw std::runtime_error("GPU 路径要求每个位置基数 ≤ 65536");
 
   // Outer (trailing) positions [n_inner, L): root cursor range and hit-index
   // stride. Overflow guard: hit indices must stay representable.
-  std::uint64_t stride = 1;
-  for (std::size_t q = n_inner; q < L; ++q) {
-    if (stride > std::numeric_limits<std::uint64_t>::max() / params.radix[q] / inner_count)
+  for (std::size_t q = shape.n_inner; q < L; ++q) {
+    if (shape.stride > std::numeric_limits<std::uint64_t>::max() / params.radix[q] / shape.inner_count)
       throw std::runtime_error("候选空间过大，GPU 路径不支持");
-    stride *= params.radix[q];
+    shape.stride *= params.radix[q];
   }
   const bool exact = params.mask[0] == 0xffffffffu && params.mask[1] == 0xffffffffu &&
                      params.mask[2] == 0xffffffffu && params.mask[3] == 0xffffffffu;
 
   // Inner table: entries iterate leading positions with position n_inner-1
   // fastest, consistent with the global enumeration index (it * stride + root).
-  const unsigned vec = vec_width();
-  const std::uint64_t inner_vec = (inner_count + vec - 1) / vec;
-  std::vector<std::uint32_t> inner_tab(inner_vec * vec, 0);
-  for (std::uint64_t it = 0; it < inner_count; ++it) {
+  shape.vec = vec;
+  shape.local = local;
+  const std::uint64_t inner_vec = (shape.inner_count + shape.vec - 1) / shape.vec;
+  shape.inner_tab.assign(inner_vec * shape.vec, 0);
+  for (std::uint64_t it = 0; it < shape.inner_count; ++it) {
     std::uint64_t v = it;
     std::uint32_t w0 = 0;
-    for (std::size_t q = n_inner; q-- > 0;) {
+    for (std::size_t q = shape.n_inner; q-- > 0;) {
       const auto rd = params.radix[q];
       const auto dig = static_cast<std::uint32_t>(v % rd);
       v /= rd;
       w0 |= static_cast<std::uint32_t>(params.chars[params.offsets[q] + dig]) << ((q & 3) * 8);
     }
-    inner_tab[it] = w0;  // flat layout: entry it lands at lane it % vec
+    shape.inner_tab[it] = w0;  // flat layout: entry it lands at lane it % vec
   }
 
-  const std::uint64_t roots_total =
-      std::min(stride, (params.limit + inner_count - 1) / inner_count);
-  const std::uint32_t max_hits = static_cast<std::uint32_t>(std::min<std::uint64_t>(params.max_hits, 65536));
-  // No per-root staging any more (threads decode their own root), so a launch
-  // is chunked only to bound per-launch work (~2^32 candidates, a few hundred
-  // ms) for interrupt responsiveness, and to stay clear of grid-size limits.
-  const std::uint64_t roots_per_launch =
-      std::clamp<std::uint64_t>((std::uint64_t{1} << 32) / inner_count, 1, std::uint64_t{1} << 24);
+  shape.roots_total = std::min(shape.stride, (params.limit + shape.inner_count - 1) / shape.inner_count);
+  shape.max_hits = static_cast<std::uint32_t>(std::min<std::uint64_t>(params.max_hits, 65536));
+  // Mixed-radix convert table: per position {charset offset, radix}; the
+  // charset bytes buffer is uploaded verbatim (offsets index into it).
+  shape.cvt.resize(L);
+  for (std::size_t q = 0; q < L; ++q) shape.cvt[q] = {params.offsets[q], params.radix[q]};
+  shape.source = build_kernel_source(L, exact, shape.vec);
 
-  const std::string source = build_kernel_source(L, exact, vec);
   const char *const dump = std::getenv("ZM_DUMP_KERNEL");
   if (dump && *dump) {
-    if (FILE *f = std::fopen(dump, "w")) { std::fwrite(source.data(), 1, source.size(), f); std::fclose(f); }
+    if (FILE *f = std::fopen(dump, "w")) { std::fwrite(shape.source.data(), 1, shape.source.size(), f); std::fclose(f); }
   }
 
-  cl_int err = CL_SUCCESS;
-  cl_context context = cl.CreateContext(nullptr, 1, &device, nullptr, nullptr, &err);
-  cl_check(err, "clCreateContext");
-  cl_command_queue queue = cl.CreateCommandQueue(context, device, 0, &err);
-  cl_check(err, "clCreateCommandQueue");
+  std::uint64_t max_weight = 1;
+  for (const auto &d : devices) max_weight = std::max(max_weight, d.weight());
+  SharedState shared{shape.roots_total, shape.max_hits, max_weight, params.interrupted};
+  std::vector<DeviceWork> works(devices.size());
+  std::barrier sync(static_cast<std::ptrdiff_t>(devices.size()));
+  std::vector<std::thread> threads;
+  threads.reserve(devices.size());
+  for (std::size_t i = 0; i != devices.size(); ++i)
+    threads.emplace_back(run_device, std::cref(cl), std::cref(devices[i]), std::cref(params),
+                         std::cref(shape), std::ref(shared), std::ref(works[i]), std::ref(sync),
+                         i == 0 && dump && *dump ? dump : nullptr);
+  for (auto &t : threads) t.join();
 
   GpuMatchResult result;
-  cl_program program = nullptr;
-  cl_kernel kernel = nullptr;
-  ClMem cvt_mem(&cl), cst_mem(&cl), tab_mem(&cl);
-  ClMem count_mem(&cl), index_mem(&cl), digest_mem(&cl);
-  try {
-    const char *source_cstr = source.c_str();
-    const size_t source_len = source.size();
-    program = cl.CreateProgramWithSource(context, 1, &source_cstr, &source_len, &err);
-    cl_check(err, "clCreateProgramWithSource");
-    // -cl-nv-verbose puts ptxas' register/spill report into the build log;
-    // enabled together with ZM_DUMP_KERNEL (log lands in <dump>.log).
-    err = cl.BuildProgram(program, 1, &device, dump && *dump ? "-cl-nv-verbose" : nullptr, nullptr, nullptr);
-    if (dump && *dump) {
-      size_t log_size = 0;
-      cl.GetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
-      std::string log(log_size, '\0');
-      cl.GetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log.size(), log.data(), nullptr);
-      const std::string logpath = std::string(dump) + ".log";
-      if (FILE *f = std::fopen(logpath.c_str(), "w")) { std::fwrite(log.data(), 1, log.size(), f); std::fclose(f); }
+  std::size_t succeeded = 0;
+  std::string first_error;
+  auto span_begin = std::chrono::steady_clock::time_point::max();
+  auto span_end = std::chrono::steady_clock::time_point::min();
+  for (std::size_t i = 0; i != devices.size(); ++i) {
+    auto &w = works[i];
+    if (!w.error.empty()) {
+      if (first_error.empty()) first_error = w.error;
+      if (!quiet)
+        std::fprintf(stderr, "GPU[%zu] %s 初始化失败，已跳过：%s\n", i, devices[i].name.c_str(), w.error.c_str());
+      continue;
     }
-    if (err != CL_SUCCESS) {
-      size_t log_size = 0;
-      cl.GetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
-      std::string log(log_size, '\0');
-      cl.GetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log.size(), log.data(), nullptr);
-      throw std::runtime_error("OpenCL 内核编译失败：" + log);
+    ++succeeded;
+    result.hit_total += w.hit_total;
+    result.processed += w.processed;
+    std::move(w.hits.begin(), w.hits.end(), std::back_inserter(result.hits));
+    if (!w.processed) continue;
+    span_begin = std::min(span_begin, w.first_launch);
+    span_end = std::max(span_end, w.last_finish);
+    if (!quiet) {
+      const double busy = std::chrono::duration<double>(w.last_finish - w.first_launch).count();
+      std::fprintf(stderr, "GPU[%zu] %s：%llu 候选（%.2f hashes/s）\n", i, devices[i].name.c_str(),
+                   static_cast<unsigned long long>(w.processed),
+                   busy > 0 ? static_cast<double>(w.processed) / busy : 0.0);
     }
-    kernel = cl.CreateKernel(program, "zm_md5_match", &err);
-    cl_check(err, "clCreateKernel");
-
-    auto make_ro = [&](const void *data, size_t size) {
-      cl_int e = CL_SUCCESS;
-      const std::uint8_t dummy = 0;
-      if (size == 0) { data = &dummy; size = 1; }
-      cl_mem m = cl.CreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, size, const_cast<void *>(data), &e);
-      cl_check(e, "clCreateBuffer");
-      return m;
-    };
-    // Mixed-radix convert table: per position {charset offset, radix}; the
-    // charset bytes buffer is uploaded verbatim (offsets index into it).
-    std::vector<std::array<std::uint32_t, 2>> cvt(L);
-    for (std::size_t q = 0; q < L; ++q) cvt[q] = {params.offsets[q], params.radix[q]};
-    cvt_mem.mem = make_ro(cvt.data(), cvt.size() * sizeof(cvt[0]));
-    cst_mem.mem = make_ro(params.chars.data(), params.chars.size());
-    tab_mem.mem = make_ro(inner_tab.data(), inner_tab.size() * sizeof(std::uint32_t));
-    const std::uint32_t zero = 0;
-    count_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(zero), const_cast<std::uint32_t *>(&zero), &err);
-    cl_check(err, "clCreateBuffer hit_count");
-    index_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE, sizeof(std::uint64_t) * max_hits, nullptr, &err);
-    cl_check(err, "clCreateBuffer hit_index");
-    digest_mem.mem = cl.CreateBuffer(context, CL_MEM_READ_WRITE, 16 * max_hits, nullptr, &err);
-    cl_check(err, "clCreateBuffer hit_digest");
-
-    auto set_u32 = [&](cl_uint n, std::uint32_t v) { cl_check(cl.SetKernelArg(kernel, n, sizeof(v), &v), "clSetKernelArg"); };
-    auto set_u64 = [&](cl_uint n, std::uint64_t v) { cl_check(cl.SetKernelArg(kernel, n, sizeof(v), &v), "clSetKernelArg"); };
-    auto set_mem = [&](cl_uint n, cl_mem m) { cl_check(cl.SetKernelArg(kernel, n, sizeof(m), &m), "clSetKernelArg"); };
-    set_u64(2, inner_count);
-    set_u64(3, stride);
-    for (cl_uint i = 0; i != 4; ++i) {
-      set_u32(4 + i, params.value[i]);
-      set_u32(8 + i, params.mask[i]);
-    }
-    set_mem(12, cvt_mem.mem);
-    set_mem(13, cst_mem.mem);
-    set_mem(14, tab_mem.mem);
-    set_u32(15, static_cast<std::uint32_t>(n_inner));
-    set_u32(16, max_hits);
-    set_mem(17, count_mem.mem);
-    set_mem(18, index_mem.mem);
-    set_mem(19, digest_mem.mem);
-
-    // VEC=16 needs 158 regs/thread; 512-thread blocks would exceed the 64K
-    // register file (CL_OUT_OF_RESOURCES), so clamp the block size there.
-    size_t local_size = local_size_cfg();
-    if (vec == 16 && local_size > 256) local_size = 256;
-
-    const auto start = std::chrono::steady_clock::now();
-    std::uint64_t roots_done = 0;
-    while (roots_done < roots_total) {
-      const std::uint64_t roots_this = std::min(roots_per_launch, roots_total - roots_done);
-      set_u64(0, roots_done);
-      set_u64(1, roots_this);
-      const size_t global_size = static_cast<size_t>((roots_this + local_size - 1) / local_size) * local_size;
-      cl_check(cl.EnqueueNDRangeKernel(queue, kernel, 1, nullptr, &global_size, &local_size, 0, nullptr, nullptr),
-               "clEnqueueNDRangeKernel");
-      cl_check(cl.Finish(queue), "clFinish");
-      roots_done += roots_this;
-      std::uint32_t hits = 0;
-      cl_check(cl.EnqueueReadBuffer(queue, count_mem.mem, CL_TRUE, 0, sizeof(hits), &hits, 0, nullptr, nullptr),
-               "clEnqueueReadBuffer");
-      result.hit_total = hits;
-      if (params.interrupted && params.interrupted->load(std::memory_order_relaxed)) break;
-      if (hits >= max_hits) break;
-    }
-    result.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-    result.processed = std::min(params.limit, roots_done * inner_count);
-
-    const std::uint32_t stored = static_cast<std::uint32_t>(std::min<std::uint64_t>(result.hit_total, max_hits));
-    if (stored) {
-      std::vector<std::uint64_t> indices(stored);
-      std::vector<std::array<std::uint32_t, 4>> digests(stored);
-      cl_check(cl.EnqueueReadBuffer(queue, index_mem.mem, CL_TRUE, 0, stored * sizeof(std::uint64_t), indices.data(), 0, nullptr, nullptr),
-               "clEnqueueReadBuffer hits");
-      cl_check(cl.EnqueueReadBuffer(queue, digest_mem.mem, CL_TRUE, 0, stored * 16, digests.data(), 0, nullptr, nullptr),
-               "clEnqueueReadBuffer digests");
-      result.hits.resize(stored);
-      for (std::uint32_t i = 0; i != stored; ++i) result.hits[i] = GpuMatchHit{indices[i], digests[i]};
-    }
-  } catch (...) {
-    if (kernel) cl.ReleaseKernel(kernel);
-    if (program) cl.ReleaseProgram(program);
-    cl.ReleaseCommandQueue(queue);
-    cl.ReleaseContext(context);
-    throw;
   }
-  cl.ReleaseKernel(kernel);
-  cl.ReleaseProgram(program);
-  cl.ReleaseCommandQueue(queue);
-  cl.ReleaseContext(context);
+  if (!succeeded) throw std::runtime_error(first_error.empty() ? "所有 GPU 设备均不可用" : first_error);
+  result.processed = std::min(params.limit, result.processed);
+  // Each device buffers up to max_hits of its own; cap the merged list so
+  // --max-output stays a global limit.
+  if (result.hits.size() > shape.max_hits) {
+    std::sort(result.hits.begin(), result.hits.end(),
+              [](const GpuMatchHit &a, const GpuMatchHit &b) { return a.index < b.index; });
+    result.hits.resize(shape.max_hits);
+  }
+  if (span_end > span_begin)
+    result.seconds = std::chrono::duration<double>(span_end - span_begin).count();
   return result;
+}
+
+} // namespace
+
+GpuMatchResult gpu_match(const GpuMatchParams &params) {
+  const Cl &cl = cl_api();
+  if (!cl.GetPlatformIDs) throw std::runtime_error("OpenCL 不可用");
+  const auto devices = select_gpus(find_gpus());
+  if (devices.empty()) throw std::runtime_error("未找到 GPU 设备");
+
+  const unsigned env_vec = env_tune("ZM_VEC", {4, 8, 16});
+  const unsigned env_local = env_tune("ZM_LOCAL", {128, 256, 512});
+  const auto cached = tune_cache_lookup(tune_key(devices[0]));
+  const unsigned vec = env_vec ? env_vec : cached ? cached->vec : 16;
+  const unsigned local = env_local ? env_local : cached ? cached->local : 256;
+  const char *source = (env_vec || env_local) ? "环境变量" : cached ? "autotune 缓存" : "默认值";
+  std::fprintf(stderr, "发射参数：VEC=%u LOCAL=%u（%s）\n", vec, local, source);
+  return gpu_match_impl(params, devices, vec, local, false);
+}
+
+GpuTuning gpu_autotune(std::atomic<bool> *interrupted) {
+  const Cl &cl = cl_api();
+  if (!cl.GetPlatformIDs) throw std::runtime_error("OpenCL 不可用");
+  const auto devices = select_gpus(find_gpus());
+  if (devices.empty()) throw std::runtime_error("未找到 GPU 设备");
+  const GpuDeviceInfo &dev = devices[0];  // find_gpus sorts by compute units
+  std::fprintf(stderr, "autotune：在 %s 上实测发射参数组合（其余 GPU 沿用同一组合）\n", dev.name.c_str());
+
+  // Fixed synthetic exact-target space: length 10, digits (1e10 candidates).
+  // The vec/local ranking is occupancy-bound and carries over to other
+  // lengths; exact mode is the common hash-crack path (early-reject).
+  GpuMatchParams base;
+  base.length = 10;
+  for (std::uint32_t q = 0; q != 10; ++q) {
+    base.offsets.push_back(q * 10);
+    for (char ch = '0'; ch <= '9'; ++ch) base.chars.push_back(static_cast<std::uint8_t>(ch));
+    base.radix.push_back(10);
+  }
+  base.offsets.push_back(100);
+  base.value.fill(0x42424242u);
+  base.mask.fill(0xffffffffu);
+  base.max_hits = 16;
+  base.interrupted = interrupted;
+
+  auto run_once = [&](unsigned vec, unsigned local, std::uint64_t limit) {
+    GpuMatchParams p = base;
+    p.limit = limit;
+    const auto r = gpu_match_impl(p, {dev}, vec, local, true);
+    return r.seconds > 1e-9 ? static_cast<double>(r.processed) / r.seconds : 0.0;
+  };
+
+  // Calibrate the per-run size toward ~0.4 s of kernel time.
+  const double probe = run_once(16, 256, 1u << 26);
+  if (probe <= 0) throw std::runtime_error("校准运行失败");
+  const auto run_limit = std::clamp<std::uint64_t>(static_cast<std::uint64_t>(probe * 0.4), 1u << 24, 1ull << 33);
+
+  const unsigned vecs[] = {16, 8, 4};      // defaults first: ties keep 16/256
+  const unsigned locals[] = {256, 128, 512};
+  GpuTuning best;
+  double best_rate = 0;
+  bool stop = false;
+  for (const unsigned vec : vecs) {
+    for (const unsigned local : locals) {
+      if (stop) continue;
+      if (vec == 16 && local > 256) continue;  // register-file clamp, see run_device
+      if (interrupted && interrupted->load(std::memory_order_relaxed)) { stop = true; continue; }
+      try {
+        run_once(vec, local, run_limit);  // warmup, also primes the driver JIT cache
+        std::array<double, 5> samples{};
+        for (auto &s : samples) s = run_once(vec, local, run_limit);
+        std::sort(samples.begin(), samples.end());
+        const double median = samples[samples.size() / 2];
+        std::fprintf(stderr, "  VEC=%-2u LOCAL=%-3u  %.2f GH/s\n", vec, local, median / 1e9);
+        if (median > best_rate) { best_rate = median; best = {vec, local}; }
+      } catch (const std::exception &e) {
+        std::fprintf(stderr, "  VEC=%-2u LOCAL=%-3u  失败：%s\n", vec, local, e.what());
+      }
+    }
+  }
+  if (best_rate <= 0) throw std::runtime_error("所有参数组合均失败");
+  if (stop) std::fprintf(stderr, "已收到 Ctrl+C，用已完成组合中的最优值。\n");
+  tune_cache_store(tune_key(dev), best);
+  return best;
 }

@@ -192,7 +192,7 @@ unsigned default_thread_count() noexcept {
 }
 
 struct Config {
-  enum class Mode { Hash, Match, PhpWeak, Prefix, Collision, Benchmark, Selftest } mode = Mode::Match;
+  enum class Mode { Hash, Match, PhpWeak, Prefix, Collision, Benchmark, Selftest, Autotune } mode = Mode::Match;
   std::size_t length = 1;
   std::string charset = "lower", custom_charset;
   std::string allow, deny, position_spec, pattern, target;
@@ -267,11 +267,20 @@ void print_help(bool color) {
   --no-color                 关闭彩色输出，适合重定向到文件
   --no-simd                  强制使用标量 MD5 路径（benchmark 和搜索）
   --gpu / --no-gpu           match 模式启用/禁用 GPU（OpenCL，长度 ≤ 55，默认自动）
-  --mode hash|match|weak-collision|prefix-collision|collision|benchmark|selftest
+  --mode hash|match|weak-collision|prefix-collision|collision|benchmark|selftest|autotune
 
 selftest 校验 AVX-512 流式多块 MD5 与标量实现逐字节一致（无 AVX-512 时跳过）。
 
+autotune 在本机 GPU 上实测 VEC×LOCAL 发射参数组合并缓存最优值；之后的 GPU 搜索
+自动使用缓存结果，ZM_VEC/ZM_LOCAL 环境变量仍可覆盖。
+
 weak-collision 使用 PHP magic hash 语义：两个 MD5 都必须匹配 ^0e[0-9]+$。
+
+调试用环境变量（仅调优实验，正常使用无需设置）：
+  ZM_GPUS=0,1,...      按算力排序下标挑选 GPU 子集（默认全部）
+  ZM_VEC=4|8|16        GPU 内核向量宽度，每线程候选数（默认 16 或 autotune 缓存值）
+  ZM_LOCAL=128|256|512 GPU 内核工作组大小（默认 256 或 autotune 缓存值）
+  ZM_DUMP_KERNEL=路径  导出现场生成的 GPU 内核源码与编译日志（.log）
 )";
 }
 
@@ -287,7 +296,7 @@ Config parse(int argc, char **argv) {
     const std::string_view a = argv[i];
     auto value = [&]() -> std::string { if (++i >= argc) usage_error("选项缺少参数：" + std::string(a)); return argv[i]; };
     if (a == "--help" || a == "-h") { print_help(c.color); std::exit(0); }
-    else if (a == "--mode") { auto v = value(); if (v == "hash") c.mode = Config::Mode::Hash; else if (v == "match") c.mode = Config::Mode::Match; else if (v == "weak-collision" || v == "php-weak" || v == "0e") c.mode = Config::Mode::PhpWeak; else if (v == "prefix-collision") c.mode = Config::Mode::Prefix; else if (v == "collision") c.mode = Config::Mode::Collision; else if (v == "benchmark" || v == "bench") c.mode = Config::Mode::Benchmark; else if (v == "selftest" || v == "self-test") c.mode = Config::Mode::Selftest; else usage_error("未知模式：" + v); }
+    else if (a == "--mode") { auto v = value(); if (v == "hash") c.mode = Config::Mode::Hash; else if (v == "match") c.mode = Config::Mode::Match; else if (v == "weak-collision" || v == "php-weak" || v == "0e") c.mode = Config::Mode::PhpWeak; else if (v == "prefix-collision") c.mode = Config::Mode::Prefix; else if (v == "collision") c.mode = Config::Mode::Collision; else if (v == "benchmark" || v == "bench") c.mode = Config::Mode::Benchmark; else if (v == "selftest" || v == "self-test") c.mode = Config::Mode::Selftest; else if (v == "autotune" || v == "tune") c.mode = Config::Mode::Autotune; else usage_error("未知模式：" + v); }
     else if (a == "--length") c.length = number(value());
     else if (a == "--charset") c.charset = value();
     else if (a == "--charset-custom") c.custom_charset = value();
@@ -845,9 +854,27 @@ int run_gpu_match(const Config &c, const SearchSpace &space, std::uint64_t limit
   return 0;
 }
 
+int run_autotune(const Config &c) {
+  interrupted.store(false, std::memory_order_relaxed);
+  if (!gpu_available()) {
+    std::cerr << paint("autotune：", Ansi::red, c.color) << "未检测到可用的 OpenCL GPU\n";
+    return 1;
+  }
+  try {
+    const auto best = gpu_autotune(&interrupted);
+    std::cerr << paint("autotune 完成：", Ansi::green, c.color) << "最优组合 VEC=" << best.vec
+              << "，LOCAL=" << best.local << "（已缓存，之后的 GPU 搜索自动生效）\n";
+    return 0;
+  } catch (const std::exception &e) {
+    std::cerr << paint("autotune 失败：", Ansi::red, c.color) << e.what() << '\n';
+    return 1;
+  }
+}
+
 int run(const Config &c) {
   if (c.mode == Config::Mode::Selftest) return run_selftest(c);
   if (c.mode == Config::Mode::Benchmark) return run_benchmark(c);
+  if (c.mode == Config::Mode::Autotune) return run_autotune(c);
   if (c.mode == Config::Mode::Hash) {
     const auto d = md5(std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t *>(c.text.data()), c.text.size()));
     std::cout << hex(d, c.upper_output) << "  " << c.text << '\n'; return 0;
@@ -858,6 +885,8 @@ int run(const Config &c) {
   const std::string pattern = normalize_pattern(c.pattern);
   Digest target_digest{};
   const bool has_target = !target.empty();
+  if (c.mode == Config::Mode::Match && !has_target && pattern.empty())
+    usage_error("match 模式需要 --target-digest 或 --digest-pattern");
   for (unsigned i = 0; has_target && i != 16; ++i)
     target_digest[i] = static_cast<std::uint8_t>(std::stoul(target.substr(2 * i, 2), nullptr, 16));
   if (c.mode == Config::Mode::Prefix && (c.weak_hex == 0 || c.weak_hex > 32)) usage_error("weak-hex 必须在 1 到 32 之间");

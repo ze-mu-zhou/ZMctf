@@ -38,3 +38,15 @@ struct GpuMatchResult {
 bool gpu_available() noexcept;
 // Throws std::runtime_error on OpenCL errors.
 GpuMatchResult gpu_match(const GpuMatchParams &params);
+
+struct GpuTuning {
+  unsigned vec = 16;
+  unsigned local = 256;
+};
+
+// Benchmarks the vec x local launch-parameter grid on the fastest GPU (fixed
+// synthetic length-10 digits exact-target space, 1 warmup + 5 timed runs per
+// combo, median rate wins) and caches the best combo keyed by device name and
+// driver version. Later gpu_match calls use the cached values unless
+// ZM_VEC/ZM_LOCAL override them. Throws std::runtime_error if no GPU works.
+GpuTuning gpu_autotune(std::atomic<bool> *interrupted = nullptr);
