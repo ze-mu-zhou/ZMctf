@@ -1,0 +1,80 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "compiler": "MSYS2 UCRT64 GCC 16.1.0 Rev5",
+  "source_sha256": {
+    "src\\b64.h": "dc999cdf8843e834dddd0fb90a911322721de364956ba2a6f23a04395353120c",
+    "src\\crack_cpu.cpp": "c3ce360cc56581fd223578ae0de3ccaa6bf51746f3613951e0466e3b62271229",
+    "src\\crack_cpu.h": "a78ef8b5265b2a5cefe9d071404781ef0a3fb6ab6de8db04a3077e319c633978",
+    "src\\flask.cpp": "8fc2998dde9a1834b21660e23d095775916c939f2ef91975e851a3edb8c36f70",
+    "src\\flask.h": "fa390f3374fa62ef19054f9d9c1a9f6ec8b452da0747f96eb79bf3978ba42d5b",
+    "src\\json_mini.h": "10eb60975c7e7f20be238302801c1ea29c8dffdf3c49f17df08448ebfef6b7be",
+    "src\\main.cpp": "56da04858217bbccdf51bdc299c4bcbf6ae936571549b29ddf8803880615d26a",
+    "src\\sha1.h": "57181886bfa4ea4e8c17c9945f336a9ed52c8b8c1b7e614ca21503b84f5dedc8",
+    "src\\thread_group.h": "f67082af5b0bff1f679606ac4cd17902871de846317980a9a1183f0443e8b2c4",
+    "src\\gpu\\divmagic.h": "fda43059738b9d5ac2f2dbc9dc4e1bfa4bfa6dcaa27a6a646f49f184cc8f2101",
+    "src\\gpu\\kernel_cl.h": "d6215660c0eb3019aea16bf968446e1e520f4a7c6c96de493977c853bae5c66a",
+    "src\\gpu\\nvrtc.cpp": "fc65410184fa557649a1ed0e675efa6655648f85498c4b82696345695e44b7a4",
+    "src\\gpu\\nvrtc.h": "5cdb49f4aae53d91f9c69993a1aa70f4a1afdb2b25ae3781ddc82ce04beb6493",
+    "src\\gpu\\ocl.cpp": "54e02556fd295f0b4e9879d189f5e1ecb0b9a092669a71dd2b387cb1844665b2",
+    "src\\gpu\\ocl.h": "bb6778cd3699fd5f752c79b4d40bf2d60f9774e72c68ee8507cfe125602fddb0",
+    "src\\gpu\\ocl_stub.cpp": "e65fcbd353f362e4e5e12d4f419e5cbf84740fae8ba80d9136930cebf3d97a5e"
+  },
+  "binary_sha256": "cebeb86e21ddaf423c113e7a1996d4359e0f82331e1db5d652748a382524e43d",
+  "head": "165fb617e5fcf0229c3e011b6aa05b4d6b6644c0",
+  "loader_summary": {
+    "getline": {
+      "load_s": 0.9885378,
+      "destroy_s": 0.0503476,
+      "peak_working_set": 543363072,
+      "min_load_s": 0.9684638,
+      "max_load_s": 1.0271127
+    },
+    "reserve": {
+      "load_s": 0.7219528,
+      "destroy_s": 0.0490595,
+      "peak_working_set": 517435392,
+      "min_load_s": 0.7089143,
+      "max_load_s": 0.7683903
+    },
+    "flat": {
+      "load_s": 0.2419444,
+      "destroy_s": 0.0125411,
+      "peak_working_set": 293429248,
+      "min_load_s": 0.2356789,
+      "max_load_s": 0.2587138
+    }
+  },
+  "serve_summary": {
+    "mask100M-cpu-32": {
+      "median": 1.301911900001869,
+      "min": 1.2974356000013358,
+      "max": 1.5021477000009327
+    },
+    "mask100M-gpu-16": {
+      "median": 0.3068976000031398,
+      "min": 0.17890229999829899,
+      "max": 0.34378819999983534
+    },
+    "mask100M-auto-32": {
+      "median": 0.22840920000089682,
+      "min": 0.18649319999894942,
+      "max": 0.23735619999933988
+    },
+    "dict16M-cpu-32": {
+      "median": 1.407703599998058,
+      "min": 1.3967728999996325,
+      "max": 1.462239699998463
+    },
+    "dict16M-gpu-16": {
+      "median": 1.4286546999974234,
+      "min": 1.414881400000013,
+      "max": 1.4657031999995525
+    },
+    "dict16M-auto-32": {
+      "median": 1.4013242999972135,
+      "min": 1.310481599997729,
+      "max": 1.4169628999989072
+    }
+  },
+  "telemetry_samples": 482
+}

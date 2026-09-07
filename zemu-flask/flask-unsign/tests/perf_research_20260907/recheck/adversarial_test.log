@@ -1,0 +1,82 @@
+PASS T1-sign-keyorder-bytes (已知偏差: tool=eyJhIjoyLCJiIjoxfQ flask=eyJiIjoxLCJhIjoyfQ)
+PASS T1b-forged-cookie-loads-in-flask 
+PASS T2-utf8-secret-verify 
+PASS T2b-crack-utf8-secret-cpu [*] 引擎 CPU,尝试 2 个,耗时 0.0050667 s,394/s
+
+PASS T3-long-word-cpu [*] 引擎 CPU,尝试 5 个,耗时 0.0040072 s,1247/s
+
+PASS T3b-long-word-gpu-skip-rescan [*] GPU 路径跳过 4 个超长词(>32B,GPU 跑完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0028859 s
+
+PASS T4-word-eq-stride-gpu [*] 引擎 GPU(gfx1036),命中于第 2 个,耗时 0.0026199 s,约 763/s
+
+PASS T5-mask-literal-q 掩码共 4 位,组合 260 个
+[*] 引擎 CPU,尝试 111 个,耗时 0.0034853 s,31848/s
+
+PASS T5b-mask-trailing-bare-q !] 掩码不合法(支持 ?l ?u ?d ?s ?a 与字面字符,?? 转义)
+
+PASS T5c-mask-empty 
+PASS T6-mask-overflow-detected [!] 组合数过大(超过 2^64)
+
+PASS T7-wrong-salt-invalid 
+PASS T7b-custom-salt-roundtrip 
+PASS T8-compressed-decode '{"data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+PASS T9-malformed-cookie 
+PASS T9b-bad-sig-b64 
+PASS T9c-bad-payload-b64 
+PASS T10-threads-reject-'abc' 
+PASS T10-threads-reject-'-5' 
+PASS T10-threads-reject-'-1' 
+PASS T10-threads-reject-'8abc' 
+PASS T10-threads-reject-'1.5' 
+PASS T10-threads-reject-'1025' 
+PASS T10-threads-reject-'100000' 
+PASS T10-threads-reject-'999999999999999999999999' 
+PASS T10-threads-reject-' 8' 
+PASS T10-threads-reject-'8 ' 
+PASS T10-threads-reject-'+8' 
+PASS T10-threads-reject-'' 
+PASS T10-threads-reject-['--threads'] 
+PASS T10-threads-reject-['--threads', '--salt', 'cookie-session'] 
+PASS T10-threads-reject-['--threads', '2', '--threads', 'abc'] 
+PASS T10-threads-accept-[] 
+PASS T10-threads-accept-['--threads', '0'] 
+PASS T10-threads-accept-['--threads', '1'] 
+PASS T10-threads-accept-['--threads', '2'] 
+PASS T10-threads-upper-1023 
+PASS T10-threads-upper-1024 
+PASS T10-threads-serve-recovery 
+PASS T10-threads-interactive-reject 
+PASS T11-empty-wordlist 
+PASS T11b-missing-wordlist 
+PASS T12-serve-three-sentinels ['<<<zk-rc=0>>>', '<<<zk-rc=1>>>', '<<<zk-rc=2>>>']
+PASS T13-len55-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0025294 s
+
+PASS T13-len56-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0021895 s
+
+PASS T13-len63-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0027267 s
+
+PASS T13-len64-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0028245 s
+
+PASS T13-len65-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0028825 s
+
+PASS T14-num-exp-format eyJuIjoxZTEwfQ.ap5qiw.Isu61zcPNHA6zSv9hWWHfvZGFG0
+PASS T15-hybrid-hit-head wXXXXXXhead
+PASS T15-hybrid-hit-tail wXXXXXXtail
+PASS T16-interactive-eof-no-hang 
+PASS T17-hybrid-longword-head-0 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0765694 s
+PASS T17-hybrid-longword-head-1 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0834275 s
+PASS T17-hybrid-longword-head-2 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0762085 s
+PASS T17-hybrid-pos-1 [*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 3 个,耗时 0.0313466 s,约 63802
+PASS T17-hybrid-pos-999 [*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 1001 个,耗时 0.037273 s,约 536
+PASS T17-hybrid-pos-666666 [*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 666668 个,耗时 0.0490206 s,约 
+PASS T17-hybrid-pos-1000000 [*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 1000002 个,耗时 0.0596061 s,约
+PASS T17-hybrid-pos-1999998 [*] 引擎 GPU+CPU(gfx1036),CPU 侧命中,耗时 0.0801978 s,约 24938339/s
+
+========================================
+ALL PASS

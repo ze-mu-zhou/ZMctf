@@ -29,7 +29,12 @@ int main() {
   require(stop.load() && exited.load(), "caller exception did not stop and join worker");
 
   // Exceptions thrown inside verification must not escape the worker entry point.
-  std::vector<std::string> words(10000, "word");
+  WordSet words; // 10000 个 4 字节词(内容无关紧要:verify 回调不检查)
+  words.off.push_back(0);
+  for (int i = 0; i < 10000; i++) {
+    words.bytes.insert(words.bytes.end(), 4, 'w');
+    words.off.push_back((uint32_t)words.bytes.size());
+  }
   auto failed = crackCpuWords(words, 2, throwsUnknown, nullptr);
   require(!failed.found && !failed.error.empty(), "worker exception lost");
   require(!g_crackAbort.load(), "failure leaked into persistent cancellation state");

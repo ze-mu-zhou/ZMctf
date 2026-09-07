@@ -1,0 +1,32 @@
+[
+  {
+    "name": "initial-gpuinfo",
+    "wall_s": 2.011125799999718,
+    "output": "GPU 可用: NVIDIA GeForce RTX 4060 Laptop GPU\n<<<zk-rc=0>>>\n"
+  },
+  {
+    "name": "cpu",
+    "wall_s": 0.12137380000058329,
+    "output": "[*] 引擎 CPU,尝试 1 个,耗时 0.000516 s,1937/s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n<<<zk-rc=0>>>\n"
+  },
+  {
+    "name": "gpu",
+    "wall_s": 0.216358500001661,
+    "output": "[prof] dict 打包: 67.1 ms(2000001 词 → 2000000 条,stride=32)\n[*] GPU 路径跳过 1 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(pinned 准备): 5.8 ms(61.0 MB)\n[prof] dict kernel+流水上传: 6.9 ms\n[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0179176 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n<<<zk-rc=0>>>\n"
+  },
+  {
+    "name": "auto",
+    "wall_s": 0.22921169999972335,
+    "output": "[prof] dict 打包: 74.5 ms(2000001 词 → 2000000 条,stride=32)\n[prof] dict 上传(pinned 准备): 5.8 ms(61.0 MB)\n[prof] dict kernel+流水上传: 6.7 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0186777 s,约 107079619/s\n<<<zk-rc=1>>>\n"
+  },
+  {
+    "name": "auto",
+    "wall_s": 0.21476669999901787,
+    "output": "[prof] dict 打包: 65.8 ms(2000001 词 → 2000000 条,stride=32)\n[prof] dict 上传(pinned 准备): 5.8 ms(61.0 MB)\n[prof] dict kernel+流水上传: 6.5 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0180792 s,约 110624419/s\n<<<zk-rc=1>>>\n"
+  },
+  {
+    "name": "auto",
+    "wall_s": 0.22152579999965383,
+    "output": "[prof] dict 打包: 68.7 ms(2000001 词 → 2000000 条,stride=32)\n[prof] dict 上传(pinned 准备): 6.0 ms(61.0 MB)\n[prof] dict kernel+流水上传: 7.1 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0215874 s,约 92646682/s\n<<<zk-rc=1>>>\n"
+  }
+]

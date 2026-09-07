@@ -1,0 +1,136 @@
+{
+  "solver": "5.1.0",
+  "method": "manual abstraction + SMT inductive obligations",
+  "source_hashes": {
+    "src/crack_cpu.cpp": "d22cf9802cf2e0228e846aa35032bfb5740d29bc3a57e94814533c2ceaeeb205",
+    "src/crack_cpu.h": "c7d5476a95e5e0f936f884ef50d0427e5166b74c1ab42a587cdc5dff6ea18ec8",
+    "src/gpu/ocl.cpp": "56e1a612752be2cb58b406a602b4be03145af34519d02f322af14237daa4d439",
+    "src/flask.cpp": "02398ea122a9555e5698fbae9e370e5b3a6b10cfbd750e9e253b6c5ace140a90"
+  },
+  "results": [
+    {
+      "name": "01_initial_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "02_cpu_claim_preserves_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "03_cpu_discard_preserves_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "04_cpu_verify_preserves_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "05_gpu_claim_preserves_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "06_gpu_completion_preserves_invariant",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "07_gpu_exhaustion_closes_gap",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "08_gpu_total_exhaustion_closes_gap",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "09_cpu_head_break_closes_gap",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "10_cpu_zero_tail_closes_gap",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "11_normal_exit_has_no_omitted_candidate",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "12_old_overclaim_counterexample",
+      "preconditions": "sat",
+      "result": "sat",
+      "expected": "sat",
+      "counterexample": {
+        "N": "65537",
+        "x": "1",
+        "N - 65536": "1",
+        "16777216": "16777216"
+      }
+    },
+    {
+      "name": "13_gpu_u64_arithmetic_dictionary_domain",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "14_cpu_u64_tail_no_underflow",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "15_wordset_no_overwrite_of_unread_suffix",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "16_wordset_u32_offset_remains_representable",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "17_wordset_next_iteration_preserves_write_bound",
+      "preconditions": "sat",
+      "result": "unsat",
+      "expected": "unsat"
+    },
+    {
+      "name": "18_without_supplement_counterexample",
+      "preconditions": "sat",
+      "result": "sat",
+      "expected": "sat",
+      "counterexample": {
+        "N": "65537",
+        "x": "0",
+        "H": "1",
+        "T": "1",
+        "R": "1",
+        "cs": "0",
+        "eligible": "False",
+        "supplemented": "False"
+      }
+    }
+  ]
+}

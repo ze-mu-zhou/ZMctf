@@ -1,0 +1,117 @@
+{
+  "test_vectors": {
+    "returncode": 0,
+    "pass": 86,
+    "fail": []
+  },
+  "adversarial_test": {
+    "returncode": 0,
+    "pass": 68,
+    "fail": []
+  },
+  "targeted": [
+    {
+      "name": "original-long-head-0",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0179661 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "original-long-head-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0316562 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "original-long-head-2",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0308322 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "nul-head-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0146728 s\nA\u0000B\n"
+    },
+    {
+      "name": "nul-head-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0182992 s\nA\u0000B\n"
+    },
+    {
+      "name": "mask-boundary-00000000-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 1 个,耗时 0.0151387 s,约 1112562637/s\n00000000\n"
+    },
+    {
+      "name": "mask-boundary-16777215-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 16777216 个,耗时 0.0294672 s,约 573800293/s\n16777215\n"
+    },
+    {
+      "name": "mask-boundary-16777216-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 16777217 个,耗时 0.0439041 s,约 768744604/s\n16777216\n"
+    },
+    {
+      "name": "mask-boundary-99999999-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0290993 s,约 578802651/s\n99999999\n"
+    },
+    {
+      "name": "mask-boundary-00000000-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 1 个,耗时 0.0157942 s,约 1078836534/s\n00000000\n"
+    },
+    {
+      "name": "mask-boundary-16777215-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 16777216 个,耗时 0.0301587 s,约 573682022/s\n16777215\n"
+    },
+    {
+      "name": "mask-boundary-16777216-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第 16777217 个,耗时 0.0443189 s,约 774858220/s\n16777216\n"
+    },
+    {
+      "name": "mask-boundary-99999999-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0290662 s,约 586225925/s\n99999999\n"
+    },
+    {
+      "name": "mask-no-hit",
+      "pass": true,
+      "returncode": 1,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.125559 s,约 796440230/s\n"
+    }
+  ],
+  "source_hashes": {
+    "src\\b64.h": "dc999cdf8843e834dddd0fb90a911322721de364956ba2a6f23a04395353120c",
+    "src\\crack_cpu.cpp": "d22cf9802cf2e0228e846aa35032bfb5740d29bc3a57e94814533c2ceaeeb205",
+    "src\\crack_cpu.h": "c7d5476a95e5e0f936f884ef50d0427e5166b74c1ab42a587cdc5dff6ea18ec8",
+    "src\\flask.cpp": "b14d2be04b586c7dadcc880e3669a3aeb0cddcbb7e4014b5354142c9c5fc898a",
+    "src\\flask.h": "9566318ed341f48bbe64302ac60f660df6ef068824abb8655cd50e5ab93deeac",
+    "src\\json_mini.h": "10eb60975c7e7f20be238302801c1ea29c8dffdf3c49f17df08448ebfef6b7be",
+    "src\\main.cpp": "dbe49530f03a5a949dba1d6a28a570d61c386ff68712335e0af675b16c8a7bd8",
+    "src\\sha1.h": "57181886bfa4ea4e8c17c9945f336a9ed52c8b8c1b7e614ca21503b84f5dedc8",
+    "src\\thread_group.h": "f67082af5b0bff1f679606ac4cd17902871de846317980a9a1183f0443e8b2c4",
+    "src\\gpu\\divmagic.h": "fda43059738b9d5ac2f2dbc9dc4e1bfa4bfa6dcaa27a6a646f49f184cc8f2101",
+    "src\\gpu\\kernel_cl.h": "d6215660c0eb3019aea16bf968446e1e520f4a7c6c96de493977c853bae5c66a",
+    "src\\gpu\\nvrtc.cpp": "fc65410184fa557649a1ed0e675efa6655648f85498c4b82696345695e44b7a4",
+    "src\\gpu\\nvrtc.h": "5cdb49f4aae53d91f9c69993a1aa70f4a1afdb2b25ae3781ddc82ce04beb6493",
+    "src\\gpu\\ocl.cpp": "6bf6d7c0b6b086a86a6c903526778a63ffdddc635cdc02d119cc3b1d8e943060",
+    "src\\gpu\\ocl.h": "1f3ee44d750333488a6bc919ec2ca64d916651abbc641c76adc068ad11b294fd",
+    "src\\gpu\\ocl_stub.cpp": "c64438d11c5fcf1f0d229c3d46c6b32e2dbca546e6e229a62b73cac883392115"
+  },
+  "exe_sha256": "ee3fb7c421c6f8d15f2d8dbc35aac483eacdb13e56f0850c432b5cba3dc94768"
+}

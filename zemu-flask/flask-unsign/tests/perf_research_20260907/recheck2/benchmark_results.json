@@ -1,0 +1,127 @@
+{
+  "rows": [
+    {
+      "name": "previous-cpu",
+      "rep": 0,
+      "warmup": true,
+      "seconds": 1.3238695999971242,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.249142 s,64220352/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "current-cpu",
+      "rep": 0,
+      "warmup": true,
+      "seconds": 0.5791725999988557,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.244089 s,65549887/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "current-gpu-cache-off",
+      "rep": 0,
+      "warmup": true,
+      "seconds": 2.9172213000019838,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0545639 s,约 293234171/s\n"
+    },
+    {
+      "name": "current-gpu-cache-default",
+      "rep": 0,
+      "warmup": true,
+      "seconds": 3.03740900000048,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0579413 s,约 276141543/s\n"
+    },
+    {
+      "name": "current-gpu-cache-default",
+      "rep": 1,
+      "warmup": false,
+      "seconds": 3.0197291999975278,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0547226 s,约 292383768/s\n"
+    },
+    {
+      "name": "current-gpu-cache-off",
+      "rep": 1,
+      "warmup": false,
+      "seconds": 2.8559965999993437,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0540721 s,约 295901213/s\n"
+    },
+    {
+      "name": "current-cpu",
+      "rep": 1,
+      "warmup": false,
+      "seconds": 0.5618657000013627,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.232688 s,68761455/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "previous-cpu",
+      "rep": 1,
+      "warmup": false,
+      "seconds": 1.2764160000006086,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.242935 s,65861184/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "previous-cpu",
+      "rep": 2,
+      "warmup": false,
+      "seconds": 1.300755800002662,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.2419 s,66143088/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "current-cpu",
+      "rep": 2,
+      "warmup": false,
+      "seconds": 0.5708438000001479,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.234992 s,68087337/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "current-gpu-cache-off",
+      "rep": 2,
+      "warmup": false,
+      "seconds": 2.868821100000787,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0547994 s,约 291973999/s\n"
+    },
+    {
+      "name": "current-gpu-cache-default",
+      "rep": 2,
+      "warmup": false,
+      "seconds": 2.969706199997745,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0557483 s,约 287004267/s\n"
+    },
+    {
+      "name": "current-gpu-cache-default",
+      "rep": 3,
+      "warmup": false,
+      "seconds": 2.949489900001936,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0538431 s,约 297159710/s\n"
+    },
+    {
+      "name": "current-gpu-cache-off",
+      "rep": 3,
+      "warmup": false,
+      "seconds": 2.8382153999991715,
+      "stderr": "[*] 引擎 GPU,跑完未命中,耗时 0.0545085 s,约 293532201/s\n"
+    },
+    {
+      "name": "current-cpu",
+      "rep": 3,
+      "warmup": false,
+      "seconds": 0.5725983000011183,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.233427 s,68543824/s\n[!] 字典跑完未命中\n"
+    },
+    {
+      "name": "previous-cpu",
+      "rep": 3,
+      "warmup": false,
+      "seconds": 1.256715899999108,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.233876 s,68412262/s\n[!] 字典跑完未命中\n"
+    }
+  ],
+  "medians": {
+    "previous-cpu": 1.2764160000006086,
+    "current-cpu": 0.5708438000001479,
+    "current-gpu-cache-off": 2.8559965999993437,
+    "current-gpu-cache-default": 2.969706199997745
+  },
+  "wordlist_bytes": 160000000,
+  "binaries": {
+    "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\perf_research_20260907\\recheck\\zemu-flask.exe": "22b79c636de009fd034b315ad267a5fe194cc0e1b35928004b4c90cf2ac21528",
+    "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\perf_research_20260907\\recheck2\\zemu-flask.exe": "ee3fb7c421c6f8d15f2d8dbc35aac483eacdb13e56f0850c432b5cba3dc94768"
+  }
+}

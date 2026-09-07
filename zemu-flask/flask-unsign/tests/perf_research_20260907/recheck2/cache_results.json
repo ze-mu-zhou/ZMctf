@@ -1,0 +1,200 @@
+[
+  {
+    "name": "formats-cpu-'first'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 已入缓存(6 词,0.0 MB)\n[*] 引擎 CPU,尝试 1 个,耗时 0.0008232 s,1214/s\nfirst"
+  },
+  {
+    "name": "formats-cpu-'A\\x00B'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[*] 引擎 CPU,尝试 2 个,耗时 0.0003768 s,5307/s\nA\u0000B"
+  },
+  {
+    "name": "formats-cpu-'LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[*] 引擎 CPU,尝试 3 个,耗时 0.0003677 s,8158/s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+    "name": "formats-cpu-' space '",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[*] 引擎 CPU,尝试 4 个,耗时 0.0003288 s,12165/s\n space "
+  },
+  {
+    "name": "formats-cpu-'中文'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[*] 引擎 CPU,尝试 5 个,耗时 0.0003009 s,16616/s\n中文"
+  },
+  {
+    "name": "formats-cpu-'last'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[*] 引擎 CPU,尝试 6 个,耗时 0.000323 s,18575/s\nlast"
+  },
+  {
+    "name": "formats-gpu-'first'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词)\n[prof] dict 打包: 2323.8 ms(6 词 → 4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(pinned 准备): 0.1 ms(0.0 MB)\n[prof] dict kernel+流水上传: 0.2 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 1 个,耗时 0.0012405 s,约 806/s\nfirst"
+  },
+  {
+    "name": "formats-gpu-'A\\x00B'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009572 s\nA\u0000B"
+  },
+  {
+    "name": "formats-gpu-'LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0010319 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+    "name": "formats-gpu-' space '",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.2 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 2 个,耗时 0.0010169 s,约 1966/s\n space "
+  },
+  {
+    "name": "formats-gpu-'中文'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 3 个,耗时 0.0009493 s,约 3160/s\n中文"
+  },
+  {
+    "name": "formats-gpu-'last'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.5 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 4 个,耗时 0.0011436 s,约 3497/s\nlast"
+  },
+  {
+    "name": "formats-auto-'first'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.5 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.000956 s,约 1046/s\nfirst"
+  },
+  {
+    "name": "formats-auto-'A\\x00B'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0009336 s,约 2142/s\nA\u0000B"
+  },
+  {
+    "name": "formats-auto-'LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.6 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0010849 s,约 2765/s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+    "name": "formats-auto-' space '",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.5 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.000981 s,约 4077/s\n space "
+  },
+  {
+    "name": "formats-auto-'中文'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.5 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0009768 s,约 5118/s\n中文"
+  },
+  {
+    "name": "formats-auto-'last'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.0 ms\n[*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗时 0.0010334 s,约 5806/s\nlast"
+  },
+  {
+    "name": "formats-gpu-'first'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 1 个,耗时 0.0010407 s,约 960/s\nfirst"
+  },
+  {
+    "name": "formats-gpu-'A\\x00B'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0010063 s\nA\u0000B"
+  },
+  {
+    "name": "formats-gpu-'LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.2 ms\n[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0010734 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  {
+    "name": "formats-gpu-' space '",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.5 ms(0.0 MB)\n[prof] dict kernel: 0.2 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 2 个,耗时 0.0010552 s,约 1895/s\n space "
+  },
+  {
+    "name": "formats-gpu-'中文'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.2 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 3 个,耗时 0.0009758 s,约 3074/s\n中文"
+  },
+  {
+    "name": "formats-gpu-'last'",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 4 个,耗时 0.0009317 s,约 4293/s\nlast"
+  },
+  {
+    "name": "custom-salt-cache-reuse",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(6 词,含打包产物)\n[prof] dict 打包复用缓存(4 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[prof] dict 上传(COPY_HOST_PTR): 0.4 ms(0.0 MB)\n[prof] dict kernel: 0.1 ms\n[*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 1 个,耗时 0.0009438 s,约 1059/s\nfirst"
+  },
+  {
+    "name": "size-invalidation",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 已入缓存(1 词,0.0 MB)\n[*] 引擎 CPU,尝试 1 个,耗时 0.0005673 s,1762/s\nnew-key"
+  },
+  {
+    "name": "mtime-invalidation",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 已入缓存(1 词,0.0 MB)\n[*] 引擎 CPU,尝试 1 个,耗时 0.0005363 s,1864/s\nalt-key"
+  },
+  {
+    "name": "cache-hit",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(1 词)\n[*] 引擎 CPU,尝试 1 个,耗时 0.0005228 s,1912/s\nalt-key"
+  },
+  {
+    "name": "no-hit",
+    "passed": true,
+    "rc": 1,
+    "output": "[prof] dict 缓存命中(1 词)\n[prof] dict 打包: 1.6 ms(1 词 → 1 条,stride=8)\n[prof] dict 上传(pinned 准备): 0.1 ms(0.0 MB)\n[prof] dict kernel+流水上传: 0.2 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0013679 s,约 731/s"
+  },
+  {
+    "name": "deleted-dictionary",
+    "passed": true,
+    "rc": 1,
+    "output": "[!] 打不开字典: D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\perf_research_20260907\\recheck2\\cache_words.txt"
+  },
+  {
+    "name": "all-skipped-gpu",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 已入缓存(2 词,0.0 MB)\n[prof] dict 打包: 0.5 ms(2 词 → 0 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[*] 引擎 CPU,尝试 2 个,耗时 0.0004255 s,4700/s\nA\u0000B"
+  },
+  {
+    "name": "all-skipped-auto",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(2 词,含打包产物)\n[prof] dict 打包复用缓存(0 条,stride=32)\n[*] 引擎 CPU,尝试 2 个,耗时 0.0004791 s,4174/s\nA\u0000B"
+  },
+  {
+    "name": "all-skipped-gpu",
+    "passed": true,
+    "rc": 0,
+    "output": "[prof] dict 缓存命中(2 词,含打包产物)\n[prof] dict 打包复用缓存(0 条,stride=32)\n[*] GPU 路径跳过 2 个超长词(>32B,GPU 跑完后 CPU 补验)\n[*] 引擎 CPU,尝试 2 个,耗时 0.0004581 s,4365/s\nA\u0000B"
+  }
+]

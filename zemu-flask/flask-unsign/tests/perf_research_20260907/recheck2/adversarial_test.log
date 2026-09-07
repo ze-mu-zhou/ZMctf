@@ -1,0 +1,90 @@
+PASS T1-sign-keyorder-bytes (已知偏差: tool=eyJhIjoyLCJiIjoxfQ flask=eyJiIjoxLCJhIjoyfQ)
+PASS T1b-forged-cookie-loads-in-flask 
+PASS T2-utf8-secret-verify 
+PASS T2b-crack-utf8-secret-cpu [*] 引擎 CPU,尝试 2 个,耗时 0.0040478 s,494/s
+
+PASS T3-long-word-cpu [*] 引擎 CPU,尝试 5 个,耗时 0.0051499 s,970/s
+
+PASS T3b-long-word-gpu-skip-rescan [*] GPU 路径跳过 4 个超长词(>32B,GPU 跑完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009812 s
+
+PASS T4-word-eq-stride-gpu [*] 引擎 GPU(NVIDIA GeForce RTX 4060 Laptop GPU),命中于第 2 个,耗时 0.0010012 s,约 1997/s
+
+PASS T5-mask-literal-q 掩码共 4 位,组合 260 个
+[*] 引擎 CPU,尝试 111 个,耗时 0.0041675 s,26634/s
+
+PASS T5b-mask-trailing-bare-q !] 掩码不合法(支持 ?l ?u ?d ?s ?a 与字面字符,?? 转义)
+
+PASS T5c-mask-empty 
+PASS T6-mask-overflow-detected [!] 组合数过大(超过 2^64)
+
+PASS T7-wrong-salt-invalid 
+PASS T7b-custom-salt-roundtrip 
+PASS T8-compressed-decode '{"data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+PASS T9-malformed-cookie 
+PASS T9b-bad-sig-b64 
+PASS T9c-bad-payload-b64 
+PASS T10-threads-reject-'abc' 
+PASS T10-threads-reject-'-5' 
+PASS T10-threads-reject-'-1' 
+PASS T10-threads-reject-'8abc' 
+PASS T10-threads-reject-'1.5' 
+PASS T10-threads-reject-'1025' 
+PASS T10-threads-reject-'100000' 
+PASS T10-threads-reject-'999999999999999999999999' 
+PASS T10-threads-reject-' 8' 
+PASS T10-threads-reject-'8 ' 
+PASS T10-threads-reject-'+8' 
+PASS T10-threads-reject-'' 
+PASS T10-threads-reject-['--threads'] 
+PASS T10-threads-reject-['--threads', '--salt', 'cookie-session'] 
+PASS T10-threads-reject-['--threads', '2', '--threads', 'abc'] 
+PASS T10-threads-accept-[] 
+PASS T10-threads-accept-['--threads', '0'] 
+PASS T10-threads-accept-['--threads', '1'] 
+PASS T10-threads-accept-['--threads', '2'] 
+PASS T10-threads-upper-1023 
+PASS T10-threads-upper-1024 
+PASS T10-threads-serve-recovery 
+PASS T10-threads-interactive-reject 
+PASS T11-empty-wordlist 
+PASS T11b-missing-wordlist 
+PASS T12-serve-three-sentinels ['<<<zk-rc=0>>>', '<<<zk-rc=1>>>', '<<<zk-rc=2>>>']
+PASS T13-len55-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009252 s
+
+PASS T13-len56-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0010257 s
+
+PASS T13-len63-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009822 s
+
+PASS T13-len64-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009632 s
+
+PASS T13-len65-gpu 完后 CPU 补验)
+[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0009714 s
+
+PASS T14-num-exp-format eyJuIjoxZTEwfQ.ap5wiQ.-uzPWWqOUJWBERIBzw5c3ESFDM4
+PASS T15-hybrid-hit-head wXXXXXXhead
+PASS T15-hybrid-hit-tail wXXXXXXtail
+PASS T16-interactive-eof-no-hang 
+PASS T17-hybrid-longword-head-0 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0180025 s
+PASS T17-hybrid-longword-head-1 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0175465 s
+PASS T17-hybrid-longword-head-2 [*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0177164 s
+PASS T17-hybrid-pos-1 [*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第
+PASS T17-hybrid-pos-999 [*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第
+PASS T17-hybrid-pos-666666 [*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第
+PASS T17-hybrid-pos-1000000 [*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),GPU 侧命中于第
+PASS T17-hybrid-pos-1999998 [*] 引擎 GPU+CPU(NVIDIA GeForce RTX 4060 Laptop GPU),CPU 侧命中,耗
+PASS T18-serve-cache-session 
+PASS T18-cache-first-load 
+PASS T18-cache-hit-reuse 
+PASS T18-cache-cpu-engine 
+PASS T18-cache-invalidate-find-new cacheSecretB-longer
+PASS T18-cache-invalidate-miss-old 
+PASS T18-cache-disabled 
+PASS T18-cache-over-budget 
+
+========================================
+ALL PASS

@@ -1,0 +1,443 @@
+{
+  "exe_sha256": "cebeb86e21ddaf423c113e7a1996d4359e0f82331e1db5d652748a382524e43d",
+  "file_bytes": 160000000,
+  "conditions": "warm file and kernel caches; fresh CLI; no hits; no clock/power settings changed",
+  "cases": {
+    "mask100M-cpu-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--mask",
+      "?d?d?d?d?d?d?d?d",
+      "--engine",
+      "cpu",
+      "--threads",
+      "16"
+    ],
+    "mask100M-cpu-32": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--mask",
+      "?d?d?d?d?d?d?d?d",
+      "--engine",
+      "cpu",
+      "--threads",
+      "32"
+    ],
+    "mask100M-gpu-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--mask",
+      "?d?d?d?d?d?d?d?d",
+      "--engine",
+      "gpu",
+      "--threads",
+      "16"
+    ],
+    "mask100M-auto-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--mask",
+      "?d?d?d?d?d?d?d?d",
+      "--engine",
+      "auto",
+      "--threads",
+      "16"
+    ],
+    "mask100M-auto-32": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--mask",
+      "?d?d?d?d?d?d?d?d",
+      "--engine",
+      "auto",
+      "--threads",
+      "32"
+    ],
+    "dict16M-cpu-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--wordlist",
+      "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\wl-bench16.txt",
+      "--engine",
+      "cpu",
+      "--threads",
+      "16"
+    ],
+    "dict16M-cpu-32": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--wordlist",
+      "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\wl-bench16.txt",
+      "--engine",
+      "cpu",
+      "--threads",
+      "32"
+    ],
+    "dict16M-gpu-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--wordlist",
+      "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\wl-bench16.txt",
+      "--engine",
+      "gpu",
+      "--threads",
+      "16"
+    ],
+    "dict16M-auto-16": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--wordlist",
+      "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\wl-bench16.txt",
+      "--engine",
+      "auto",
+      "--threads",
+      "16"
+    ],
+    "dict16M-auto-32": [
+      "flask",
+      "crack",
+      "--cookie",
+      "eyJmbGFnIjoieCJ9.ap5f2w.RHFfkztVQbTfX0U392aaHW63l94",
+      "--wordlist",
+      "D:\\CTFtool\\ZM\\zemu-flask\\flask-unsign\\tests\\wl-bench16.txt",
+      "--engine",
+      "auto",
+      "--threads",
+      "32"
+    ]
+  },
+  "warmups": {
+    "mask100M-cpu-16": {
+      "start_epoch": 1788764123.6577642,
+      "end_epoch": 1788764125.5759668,
+      "wall_s": 1.9182413999988057,
+      "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.90732 s,52429661/s\n[!] 掩码空间跑完未命中\n"
+    },
+    "mask100M-cpu-32": {
+      "start_epoch": 1788764125.5760567,
+      "end_epoch": 1788764126.678806,
+      "wall_s": 1.1027690000009898,
+      "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.09182 s,91589987/s\n[!] 掩码空间跑完未命中\n"
+    },
+    "mask100M-gpu-16": {
+      "start_epoch": 1788764126.6788664,
+      "end_epoch": 1788764133.2014763,
+      "wall_s": 6.522764099998312,
+      "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 6.46869 s,约 15459073/s\n"
+    },
+    "mask100M-auto-16": {
+      "start_epoch": 1788764133.2015314,
+      "end_epoch": 1788764135.9837701,
+      "wall_s": 2.7823029999999562,
+      "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.73849 s,约 36516474/s\n"
+    },
+    "mask100M-auto-32": {
+      "start_epoch": 1788764135.9838274,
+      "end_epoch": 1788764138.967077,
+      "wall_s": 2.9833174999985204,
+      "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.9378 s,约 34039061/s\n"
+    },
+    "dict16M-cpu-16": {
+      "start_epoch": 1788764138.9671564,
+      "end_epoch": 1788764141.1529398,
+      "wall_s": 2.1858324999993783,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.487727 s,32805230/s\n[!] 字典跑完未命中\n"
+    },
+    "dict16M-cpu-32": {
+      "start_epoch": 1788764141.1530015,
+      "end_epoch": 1788764142.7001035,
+      "wall_s": 1.5471352999993542,
+      "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.505998 s,31620672/s\n[!] 字典跑完未命中\n"
+    },
+    "dict16M-gpu-16": {
+      "start_epoch": 1788764142.7001758,
+      "end_epoch": 1788764146.4664216,
+      "wall_s": 3.7663329000024532,
+      "stderr": "[prof] dict 打包: 2485.3 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.5 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.6 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.0650571 s,约 245937799/s\n"
+    },
+    "dict16M-auto-16": {
+      "start_epoch": 1788764146.4664774,
+      "end_epoch": 1788764150.0899878,
+      "wall_s": 3.623594199998479,
+      "stderr": "[prof] dict 打包: 2396.8 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.0 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.7 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0657559 s,约 243324173/s\n"
+    },
+    "dict16M-auto-32": {
+      "start_epoch": 1788764150.0900476,
+      "end_epoch": 1788764153.663884,
+      "wall_s": 3.573918899997807,
+      "stderr": "[prof] dict 打包: 2349.3 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.3 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.8 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0779755 s,约 205192656/s\n"
+    }
+  },
+  "runs": {
+    "mask100M-cpu-16": [
+      {
+        "start_epoch": 1788764153.663998,
+        "end_epoch": 1788764155.5110788,
+        "wall_s": 1.8471200999993016,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.83359 s,54537822/s\n[!] 掩码空间跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764178.7636602,
+        "end_epoch": 1788764180.6863825,
+        "wall_s": 1.9227632000001904,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.91071 s,52336461/s\n[!] 掩码空间跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764225.696415,
+        "end_epoch": 1788764227.6512434,
+        "wall_s": 1.9548716000026616,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.94481 s,51418809/s\n[!] 掩码空间跑完未命中\n"
+      }
+    ],
+    "mask100M-cpu-32": [
+      {
+        "start_epoch": 1788764169.3653004,
+        "end_epoch": 1788764170.535424,
+        "wall_s": 1.1701479000003019,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.15669 s,86453333/s\n[!] 掩码空间跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764198.1938024,
+        "end_epoch": 1788764199.699634,
+        "wall_s": 1.505862200003321,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.49336 s,66963228/s\n[!] 掩码空间跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764203.2162235,
+        "end_epoch": 1788764204.585553,
+        "wall_s": 1.3693576000005123,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.35656 s,73715630/s\n[!] 掩码空间跑完未命中\n"
+      }
+    ],
+    "mask100M-gpu-16": [
+      {
+        "start_epoch": 1788764155.5443702,
+        "end_epoch": 1788764157.9223404,
+        "wall_s": 2.378023799999937,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 2.32962 s,约 42925523/s\n"
+      },
+      {
+        "start_epoch": 1788764189.7941887,
+        "end_epoch": 1788764192.07875,
+        "wall_s": 2.284610699996847,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 2.23563 s,约 44730020/s\n"
+      },
+      {
+        "start_epoch": 1788764204.5868669,
+        "end_epoch": 1788764206.9238348,
+        "wall_s": 2.3370174000010593,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 2.28458 s,约 43771704/s\n"
+      }
+    ],
+    "mask100M-auto-16": [
+      {
+        "start_epoch": 1788764175.9334989,
+        "end_epoch": 1788764178.7626734,
+        "wall_s": 2.8292374999982712,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.78113 s,约 35956549/s\n"
+      },
+      {
+        "start_epoch": 1788764195.6527245,
+        "end_epoch": 1788764198.1926484,
+        "wall_s": 2.539980999998079,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.48983 s,约 40163423/s\n"
+      },
+      {
+        "start_epoch": 1788764223.202072,
+        "end_epoch": 1788764225.6951995,
+        "wall_s": 2.493184700000711,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.44436 s,约 40910445/s\n"
+      }
+    ],
+    "mask100M-auto-32": [
+      {
+        "start_epoch": 1788764164.8476632,
+        "end_epoch": 1788764167.8956866,
+        "wall_s": 3.048093900000822,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 3.00483 s,约 33279754/s\n"
+      },
+      {
+        "start_epoch": 1788764187.0264616,
+        "end_epoch": 1788764189.7932212,
+        "wall_s": 2.766822300000058,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.71999 s,约 36764786/s\n"
+      },
+      {
+        "start_epoch": 1788764210.3489597,
+        "end_epoch": 1788764213.2872434,
+        "wall_s": 2.938350899999932,
+        "stderr": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 2.89416 s,约 34552384/s\n"
+      }
+    ],
+    "dict16M-cpu-16": [
+      {
+        "start_epoch": 1788764167.8967724,
+        "end_epoch": 1788764169.36439,
+        "wall_s": 1.4676488999975845,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.522566 s,30618159/s\n[!] 字典跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764185.5659947,
+        "end_epoch": 1788764187.0256214,
+        "wall_s": 1.459657800001878,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.476488 s,33578991/s\n[!] 字典跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764221.6450794,
+        "end_epoch": 1788764223.1999125,
+        "wall_s": 1.5548593000021356,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.461021 s,34705592/s\n[!] 字典跑完未命中\n"
+      }
+    ],
+    "dict16M-cpu-32": [
+      {
+        "start_epoch": 1788764170.537095,
+        "end_epoch": 1788764171.9596562,
+        "wall_s": 1.4225919999989856,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.474853 s,33694666/s\n[!] 字典跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764180.687674,
+        "end_epoch": 1788764182.0963562,
+        "wall_s": 1.4087125999976706,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.427804 s,37400348/s\n[!] 字典跑完未命中\n"
+      },
+      {
+        "start_epoch": 1788764220.1541078,
+        "end_epoch": 1788764221.6442387,
+        "wall_s": 1.4901630999993358,
+        "stderr": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.497022 s,32191727/s\n[!] 字典跑完未命中\n"
+      }
+    ],
+    "dict16M-gpu-16": [
+      {
+        "start_epoch": 1788764161.3473606,
+        "end_epoch": 1788764164.8467677,
+        "wall_s": 3.499487599998247,
+        "stderr": "[prof] dict 打包: 2260.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.6 ms(122.1 MB)\n[prof] dict kernel+流水上传: 33.2 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.0590131 s,约 271126241/s\n"
+      },
+      {
+        "start_epoch": 1788764182.097246,
+        "end_epoch": 1788764185.5649421,
+        "wall_s": 3.4677751999988686,
+        "stderr": "[prof] dict 打包: 2249.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.2 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.9 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.0595539 s,约 268664184/s\n"
+      },
+      {
+        "start_epoch": 1788764216.6915135,
+        "end_epoch": 1788764220.1531353,
+        "wall_s": 3.4617013999995834,
+        "stderr": "[prof] dict 打包: 2313.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.6 ms(122.1 MB)\n[prof] dict kernel+流水上传: 33.2 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.0548229 s,约 291848844/s\n"
+      }
+    ],
+    "dict16M-auto-16": [
+      {
+        "start_epoch": 1788764157.9232705,
+        "end_epoch": 1788764161.346467,
+        "wall_s": 3.4232755999983056,
+        "stderr": "[prof] dict 打包: 2269.3 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.4 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.9 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0698498 s,约 229062932/s\n"
+      },
+      {
+        "start_epoch": 1788764199.7012877,
+        "end_epoch": 1788764203.2152214,
+        "wall_s": 3.514014899999893,
+        "stderr": "[prof] dict 打包: 2356.3 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.0 ms(122.1 MB)\n[prof] dict kernel+流水上传: 33.6 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0659819 s,约 242490743/s\n"
+      },
+      {
+        "start_epoch": 1788764206.9252274,
+        "end_epoch": 1788764210.3479843,
+        "wall_s": 3.4228359000007913,
+        "stderr": "[prof] dict 打包: 2232.5 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 77.7 ms(122.1 MB)\n[prof] dict kernel+流水上传: 29.8 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.116919 s,约 136846759/s\n"
+      }
+    ],
+    "dict16M-auto-32": [
+      {
+        "start_epoch": 1788764171.9605074,
+        "end_epoch": 1788764175.3376403,
+        "wall_s": 3.377210600003309,
+        "stderr": "[prof] dict 打包: 2233.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.2 ms(122.1 MB)\n[prof] dict kernel+流水上传: 32.7 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0563047 s,约 284168106/s\n"
+      },
+      {
+        "start_epoch": 1788764192.0800219,
+        "end_epoch": 1788764195.6516788,
+        "wall_s": 3.5717385999996623,
+        "stderr": "[prof] dict 打包: 2243.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.0 ms(122.1 MB)\n[prof] dict kernel+流水上传: 46.0 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.140055 s,约 114240752/s\n"
+      },
+      {
+        "start_epoch": 1788764213.2883341,
+        "end_epoch": 1788764216.6905262,
+        "wall_s": 3.402270700000372,
+        "stderr": "[prof] dict 打包: 2268.4 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.0 ms(122.1 MB)\n[prof] dict kernel+流水上传: 33.0 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0545798 s,约 293148747/s\n"
+      }
+    ]
+  },
+  "summary": {
+    "mask100M-cpu-16": {
+      "median_s": 1.9227632000001904,
+      "min_s": 1.8471200999993016,
+      "max_s": 1.9548716000026616
+    },
+    "mask100M-cpu-32": {
+      "median_s": 1.3693576000005123,
+      "min_s": 1.1701479000003019,
+      "max_s": 1.505862200003321
+    },
+    "mask100M-gpu-16": {
+      "median_s": 2.3370174000010593,
+      "min_s": 2.284610699996847,
+      "max_s": 2.378023799999937
+    },
+    "mask100M-auto-16": {
+      "median_s": 2.539980999998079,
+      "min_s": 2.493184700000711,
+      "max_s": 2.8292374999982712
+    },
+    "mask100M-auto-32": {
+      "median_s": 2.938350899999932,
+      "min_s": 2.766822300000058,
+      "max_s": 3.048093900000822
+    },
+    "dict16M-cpu-16": {
+      "median_s": 1.4676488999975845,
+      "min_s": 1.459657800001878,
+      "max_s": 1.5548593000021356
+    },
+    "dict16M-cpu-32": {
+      "median_s": 1.4225919999989856,
+      "min_s": 1.4087125999976706,
+      "max_s": 1.4901630999993358
+    },
+    "dict16M-gpu-16": {
+      "median_s": 3.4677751999988686,
+      "min_s": 3.4617013999995834,
+      "max_s": 3.499487599998247
+    },
+    "dict16M-auto-16": {
+      "median_s": 3.4232755999983056,
+      "min_s": 3.4228359000007913,
+      "max_s": 3.514014899999893
+    },
+    "dict16M-auto-32": {
+      "median_s": 3.402270700000372,
+      "min_s": 3.377210600003309,
+      "max_s": 3.5717385999996623
+    }
+  }
+}

@@ -1,0 +1,52 @@
+; benchmark generated from python API
+(set-info :status unknown)
+(declare-fun N () Int)
+(declare-fun x () Int)
+(declare-fun H () Int)
+(declare-fun cs () Int)
+(declare-fun T () Int)
+(declare-fun R () Int)
+(declare-fun newR () Int)
+(assert
+ (> N 0))
+(assert
+ (<= N 4294967295))
+(assert
+ (>= x 0))
+(assert
+ (< x N))
+(assert
+ (let (($x29 (< x H)))
+ (let (($x28 (= cs 3)))
+ (let (($x30 (=> $x28 $x29)))
+ (let (($x26 (< x T)))
+ (let (($x25 (= cs 0)))
+ (let (($x27 (= $x25 $x26)))
+ (let (($x24 (<= cs 3)))
+ (let (($x22 (>= cs 0)))
+ (let (($x21 (<= T N)))
+ (let (($x20 (>= T 0)))
+ (let (($x19 (<= H N)))
+ (let (($x17 (>= R 0)))
+ (and $x17 (<= R H) $x19 $x20 $x21 $x22 $x24 $x27 $x30))))))))))))))
+(assert
+ (<= R newR))
+(assert
+ (<= newR H))
+(assert
+ (let (($x29 (< x H)))
+(let (($x28 (= cs 3)))
+(let (($x30 (=> $x28 $x29)))
+(let (($x26 (< x T)))
+(let (($x25 (= cs 0)))
+(let (($x27 (= $x25 $x26)))
+(let (($x24 (<= cs 3)))
+(let (($x22 (>= cs 0)))
+(let (($x21 (<= T N)))
+(let (($x20 (>= T 0)))
+(let (($x19 (<= H N)))
+(let (($x409 (<= newR H)))
+(let (($x223 (>= newR 0)))
+(let (($x419 (and $x223 $x409 $x19 $x20 $x21 $x22 $x24 $x27 $x30)))
+(not $x419))))))))))))))))
+(check-sat)

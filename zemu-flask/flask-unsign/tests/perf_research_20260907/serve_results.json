@@ -1,0 +1,137 @@
+{
+  "edge": [
+    {
+      "mode": "getline",
+      "file_bytes": 24,
+      "count": 4,
+      "capacity": 4,
+      "sizeof_string": 32,
+      "sizeof_entry": 8,
+      "load_s": 3.36e-05,
+      "destroy_s": 5e-07,
+      "peak_working_set": 5447680,
+      "checksum": "17083646589366733692"
+    },
+    {
+      "mode": "reserve",
+      "file_bytes": 24,
+      "count": 4,
+      "capacity": 4,
+      "sizeof_string": 32,
+      "sizeof_entry": 8,
+      "load_s": 2.82e-05,
+      "destroy_s": 4e-07,
+      "peak_working_set": 5431296,
+      "checksum": "17083646589366733692"
+    },
+    {
+      "mode": "flat",
+      "file_bytes": 24,
+      "count": 4,
+      "capacity": 4,
+      "sizeof_string": 32,
+      "sizeof_entry": 8,
+      "load_s": 2.89e-05,
+      "destroy_s": 2e-07,
+      "peak_working_set": 5427200,
+      "checksum": "17083646589366733692"
+    }
+  ],
+  "runs": [
+    {
+      "name": "initial-gpuinfo",
+      "wall_s": 2.4801723000018683,
+      "output": "GPU 可用: NVIDIA GeForce RTX 4060 Laptop GPU\n<<<zk-rc=0>>>\n"
+    },
+    {
+      "name": "mask100M-cpu-32-0",
+      "wall_s": 1.5021477000009327,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.50145 s,66602430/s\n[!] 掩码空间跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-gpu-16-0",
+      "wall_s": 0.17890229999829899,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 0.178307 s,约 560829219/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-auto-32-0",
+      "wall_s": 0.22840920000089682,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.227964 s,约 472014311/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-cpu-32-0",
+      "wall_s": 1.462239699998463,
+      "output": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.532128 s,30067953/s\n[!] 字典跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-gpu-16-0",
+      "wall_s": 1.414881400000013,
+      "output": "[prof] dict 打包: 211.5 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 39.4 ms(122.1 MB)\n[prof] dict kernel+流水上传: 72.6 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.141874 s,约 112776284/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-auto-32-0",
+      "wall_s": 1.4013242999972135,
+      "output": "[prof] dict 打包: 201.7 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.3 ms(122.1 MB)\n[prof] dict kernel+流水上传: 49.3 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0857163 s,约 186662280/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-cpu-32-1",
+      "wall_s": 1.301911900001869,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.30155 s,76831718/s\n[!] 掩码空间跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-gpu-16-1",
+      "wall_s": 0.34378819999983534,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 0.343407 s,约 291199824/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-auto-32-1",
+      "wall_s": 0.18649319999894942,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.186028 s,约 558692151/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-cpu-32-1",
+      "wall_s": 1.407703599998058,
+      "output": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.482801 s,33139913/s\n[!] 字典跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-gpu-16-1",
+      "wall_s": 1.4286546999974234,
+      "output": "[prof] dict 打包: 208.2 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 39.3 ms(122.1 MB)\n[prof] dict kernel+流水上传: 117.8 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.169068 s,约 94636421/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-auto-32-1",
+      "wall_s": 1.4169628999989072,
+      "output": "[prof] dict 打包: 219.1 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 39.9 ms(122.1 MB)\n[prof] dict kernel+流水上传: 81.8 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.141809 s,约 112828215/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-cpu-32-2",
+      "wall_s": 1.2974356000013358,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 CPU,尝试 100000000 个,耗时 1.2967 s,77119060/s\n[!] 掩码空间跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-gpu-16-2",
+      "wall_s": 0.3068976000031398,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU,跑完未命中,耗时 0.306341 s,约 326433188/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "mask100M-auto-32-2",
+      "wall_s": 0.23735619999933988,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.236919 s,约 451129667/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-cpu-32-2",
+      "wall_s": 1.3967728999996325,
+      "output": "[*] 引擎 CPU,尝试 16000000 个,耗时 0.476958 s,33545951/s\n[!] 字典跑完未命中\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-gpu-16-2",
+      "wall_s": 1.4657031999995525,
+      "output": "[prof] dict 打包: 216.0 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 39.9 ms(122.1 MB)\n[prof] dict kernel+流水上传: 137.3 ms\n[*] 引擎 GPU,跑完未命中,耗时 0.189858 s,约 84273332/s\n<<<zk-rc=1>>>\n"
+    },
+    {
+      "name": "dict16M-auto-32-2",
+      "wall_s": 1.310481599997729,
+      "output": "[prof] dict 打包: 182.6 ms(16000000 词 → 16000000 条,stride=8)\n[prof] dict 上传(pinned 准备): 11.1 ms(122.1 MB)\n[prof] dict kernel+流水上传: 33.7 ms\n[*] 引擎 GPU+CPU,跑完未命中,耗时 0.0599907 s,约 266708006/s\n<<<zk-rc=1>>>\n"
+    }
+  ]
+}

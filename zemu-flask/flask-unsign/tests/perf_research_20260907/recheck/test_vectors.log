@@ -1,0 +1,90 @@
+PASS decode#0 {"username":"admin","uid":1}
+PASS decode#1 {"a":[1,true,null],"\u4e2d\u6587":"\u952e\n\u503c","f":1.5}
+PASS decode#2 {}
+PASS verify-good 
+PASS verify-bad 
+PASS compressed-fixture 
+PASS compressed-decode 
+PASS compressed-verify-valid 
+PASS compressed-verify-invalid 
+PASS compressed-marker-authenticated 
+PASS compressed-crack-cpu-wordlist [*] 引擎 CPU,尝试 2 个,耗时 0.0010324 s,1937/s
+PASS compressed-crack-cpu-mask [*] 掩码共 4 位,组合 10 个
+[*] 引擎 CPU,尝试 8 个,耗时 0.0007539 s,10611/s
+PASS compressed-crack-gpu-wordlist [*] 引擎 GPU(gfx1036),命中于第 2 个,耗时 0.0028144 s,约 710/s
+PASS compressed-crack-gpu-mask [*] 掩码共 4 位,组合 10 个
+[*] 引擎 GPU(gfx1036),命中于第 8 个,耗时 0.885219 s,约 9/s
+PASS compressed-crack-auto-wordlist [*] 引擎 CPU,尝试 2 个,耗时 0.0007072 s,2828/s
+PASS compressed-crack-auto-mask [*] 掩码共 4 位,组合 10 个
+[*] 引擎 CPU,尝试 8 个,耗时 0.000872 s,9174/s
+PASS cookie-structure-0-verify 
+PASS cookie-structure-0-crack 
+PASS cookie-structure-1-verify 
+PASS cookie-structure-1-crack 
+PASS cookie-structure-2-verify 
+PASS cookie-structure-2-crack 
+PASS cookie-structure-3-verify 
+PASS cookie-structure-3-crack 
+PASS cookie-structure-4-verify 
+PASS cookie-structure-4-crack 
+PASS cookie-structure-5-verify 
+PASS cookie-structure-5-crack 
+PASS cookie-structure-6-verify 
+PASS cookie-structure-6-crack 
+PASS cookie-structure-7-verify 
+PASS cookie-structure-7-crack 
+PASS max-age-default-old-False 
+PASS max-age-default-old-True 
+PASS max-age-fresh-False 
+PASS max-age-fresh-True 
+PASS max-age-expired-False 
+PASS max-age-expired-True 
+PASS max-age-zero-False 
+PASS max-age-zero-True 
+PASS max-age-future-False 
+PASS max-age-future-True 
+PASS max-age-invalid-False 
+PASS max-age-invalid-True 
+PASS max-age-oversize-False 
+PASS max-age-oversize-True 
+PASS max-age-uint64-max-False 
+PASS max-age-uint64-max-True 
+PASS max-age-legacy-False 
+PASS max-age-legacy-True 
+PASS max-age-legacy-overflow-False 
+PASS max-age-legacy-overflow-True 
+PASS max-age-signature-first 
+PASS max-age-argument-'' 
+PASS max-age-argument-'abc' 
+PASS max-age-argument-'1.5' 
+PASS max-age-argument-'8x' 
+PASS max-age-argument-'-1' 
+PASS max-age-argument-'9223372036854775808' 
+PASS max-age-missing 
+PASS max-age-wrong-command 
+PASS serve-trailing-' garbage' 
+PASS serve-trailing-' []' 
+PASS serve-trailing-' null' 
+PASS serve-trailing-'\x00garbage' 
+PASS serve-trailing-'\x00' 
+PASS sign#0 
+PASS sign#1 
+PASS sign#2 
+PASS sign-legacy eyJ4IjoxfQ.HX_8AA.jMOPe3jo8kqvPvAhHj_9rALhDE8
+PASS sign-dupkey 
+PASS sign-deep-nest 
+PASS sign-trunc-u 
+PASS sign-bad-utf8 
+PASS crack-dict-cpu [*] 引擎 CPU,尝试 3 个,耗时 0.0010338 s,2901/s
+PASS crack-dict-gpu [*] 引擎 GPU(gfx1036),命中于第 3 个,耗时 0.0024036 s,约 1248/s
+PASS crack-dict-auto [*] 引擎 CPU,尝试 3 个,耗时 0.0009452 s,3173/s
+PASS crack-dict-hybrid-skip target123 | [*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 2 个,耗时 0.073899 s,约 27063992/s
+PASS crack-mask-cpu [*] 引擎 CPU,尝试 113 个,耗时 0.0036362 s,31076/s
+PASS crack-mask-gpu [*] 引擎 GPU(gfx1036),命中于第 113 个,耗时 0.814407 s,约 138/s
+PASS crack-mask-auto [*] 引擎 CPU,尝试 4209 个,耗时 0.0034125 s,1233406/s
+PASS engine-invalid 
+PASS engine-gpu-overlimit [*] 掩码共 2 位,组合 676 个
+[!] GPU 参数超限(value ≤ 512B,salt ≤ 32B,掩码 ≤ 24 位)
+PASS interactive-decode {"u":1}
+PASS interactive-sign 
+PASS noargs-non-tty 

@@ -107,6 +107,60 @@ for i, malformed in enumerate(malformed_cookies):
         r = run("flask", action, "--cookie", malformed, *extra)
         check(f"cookie-structure-{i}-{action}", r.returncode == 1 and not r.stdout.strip())
 
+# --- 2c. 可选时间校验:默认仍只验签,签名错误优先于时间错误 ---
+def timed_cookie(timestamp, compressed=False):
+    source = compressed_cookie if compressed else cookie
+    payload = source.rsplit(".", 2)[0]
+    value = payload + "." + timestamp
+    dk = hmac.new(b"age-key", b"cookie-session", hashlib.sha1).digest()
+    sig = base64.urlsafe_b64encode(hmac.new(dk, value.encode(), hashlib.sha1).digest())
+    return value + "." + sig.rstrip(b"=").decode()
+
+
+def encoded_time(value):
+    return base64.urlsafe_b64encode(value.to_bytes(8, "big").lstrip(b"\0") or b"\0").rstrip(b"=").decode()
+
+
+now = int(time.time())
+for name, ts, options, expected in [
+    ("default-old", encoded_time(now - 7200), [], "valid"),
+    ("fresh", encoded_time(now - 10), ["--max-age", "3600"], "valid"),
+    ("expired", encoded_time(now - 7200), ["--max-age", "3600"], "expired"),
+    ("zero", encoded_time(now - 10), ["--max-age", "0"], "expired"),
+    ("future", encoded_time(now + 3600), ["--max-age", "3600"], "future"),
+    ("invalid", "!bad!", ["--max-age", "3600"], "invalid-timestamp"),
+    ("oversize", base64.urlsafe_b64encode(b"a" * 9).decode(), ["--max-age", "3600"], "invalid-timestamp"),
+    ("uint64-max", encoded_time(2**64 - 1), ["--max-age", str(2**63 - 1)], "future"),
+    ("legacy", encoded_time(now - 1293840000 - 10), ["--max-age", "3600", "--legacy"], "valid"),
+    ("legacy-overflow", encoded_time(2**64 - 1), ["--max-age", "3600", "--legacy"], "invalid-timestamp"),
+]:
+    for compressed in (False, True):
+        c = timed_cookie(ts, compressed)
+        r = run("flask", "verify", "--cookie", c, "--secret", "age-key", *options)
+        check(f"max-age-{name}-{compressed}", r.stdout.strip() == expected and
+              r.returncode == (0 if expected == "valid" else 1))
+
+r = run("flask", "verify", "--cookie", timed_cookie("!bad!"),
+        "--secret", "wrong", "--max-age", "3600")
+check("max-age-signature-first", r.returncode == 1 and r.stdout.strip() == "invalid")
+for value in ("", "abc", "1.5", "8x", "-1", "9223372036854775808"):
+    r = run("flask", "verify", "--cookie", cookie, "--secret", "k", "--max-age", value)
+    check(f"max-age-argument-{value!r}", r.returncode == 2 and "--max-age" in r.stderr)
+r = run("flask", "verify", "--cookie", cookie, "--secret", "k", "--max-age")
+check("max-age-missing", r.returncode == 2)
+r = run("flask", "decode", "--cookie", cookie, "--max-age", "3600")
+check("max-age-wrong-command", r.returncode == 2)
+
+# 一行只能有一个 JSON 值;空白允许,原始 NUL 也不能掩盖尾随内容。
+valid_command = json.dumps(["flask", "decode", "--cookie", make_serializer("k").dumps({"serve": 1})])
+for suffix in (" garbage", " []", " null", "\0garbage", "\0"):
+    r = subprocess.run([TOOL, "serve"], input=valid_command + suffix + "\n" + valid_command + " \t\r\n",
+                       capture_output=True, text=True, encoding="utf-8", timeout=15)
+    lines = r.stdout.splitlines()
+    markers = [line for line in lines if line.startswith("<<<zk-rc=")]
+    check(f"serve-trailing-{suffix!r}", r.returncode == 0 and
+          markers == ["<<<zk-rc=2>>>", "<<<zk-rc=0>>>"] and lines.count('{"serve":1}') == 1)
+
 # --- 3. sign:工具签 → Python 验 ---
 ser = make_serializer("my-secret")
 for i, obj in enumerate(cases):

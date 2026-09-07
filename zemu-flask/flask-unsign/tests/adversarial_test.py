@@ -213,6 +213,101 @@ p = subprocess.run([TOOL, "interactive"], input="4\njustcookie\n",
                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
 check("T16-interactive-eof-no-hang", True)
 
+# ---- T17: hybrid(auto)覆盖性回归:GPU 认领区内的词不得漏查 ----
+# 历史 bug 1:GPU head 按整块 fetch_add 推进而 rawHi 被活动 tail 钳小,head 虚高,
+#   CPU 按 head 放弃区间 → [实际入队边界, head) 内的词两侧都不验。
+# 历史 bug 2:打包跳过的超长词落在 GPU 认领区时,混合分支无补验 → 漏。
+# 此处密钥本身就是超长词且位于首行(GPU 首个认领块内),auto 必须经补验命中。
+long_head = "K" * 40
+c = ser(long_head).dumps({"x": 1})
+with open(WL, "w") as f:
+    f.write(long_head + "\n")
+    for i in range(2_000_000):
+        f.write(f"zz{i:07x}\n")
+env = dict(os.environ, ZK_GPUTHRESH="1", ZK_NOPROG="1")
+for trial in range(3):  # 原 bug 连续三次未命中,修复后连跑三次都必须命中
+    p = subprocess.run([TOOL, "flask", "crack", "--cookie", c, "--wordlist", WL,
+                        "--engine", "auto", "--threads", "2"],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=env, timeout=120)
+    check(f"T17-hybrid-longword-head-{trial}", p.returncode == 0 and p.stdout.strip() == long_head,
+          p.stderr.strip().splitlines()[-1][:60] if p.stderr else "")
+os.unlink(WL)
+
+# 密钥为普通短词,散在 raw 空间各位置(含 GPU 认领区中段/尾部会合处),全都必须命中
+N17 = 2_000_000
+pos17 = [1, 999, N17 // 3, N17 // 2, N17 - 2]
+tgt17 = {i: f"t{i:08x}hit" for i in pos17}
+with open(WL, "w") as f:
+    f.write("S" * 40 + "\n")  # 超长词在首行,占用 GPU 首个认领块的一个 raw 槽位
+    for i in range(N17):
+        f.write(tgt17.get(i, f"zz{i:07x}") + "\n")
+for i, secret in sorted(tgt17.items()):
+    c = ser(secret).dumps({"x": 1})
+    p = subprocess.run([TOOL, "flask", "crack", "--cookie", c, "--wordlist", WL,
+                        "--engine", "auto", "--threads", "4"],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=env, timeout=120)
+    check(f"T17-hybrid-pos-{i}", p.returncode == 0 and p.stdout.strip() == secret,
+          p.stderr.strip().splitlines()[-1][:60] if p.stderr else "")
+os.unlink(WL)
+
+# ---- T18: serve 模式字典缓存:命中复用、mtime/size 失效重载、预算禁用 ----
+# serve 合并 stderr 到 stdout,每条命令以 <<<zk-rc=N>>> 结尾;按哨兵切段逐一断言。
+def serve_run(commands, extra_env=None):
+    env2 = dict(os.environ, ZK_NOPROG="1")
+    if extra_env: env2.update(extra_env)
+    p = subprocess.run([TOOL, "serve"], capture_output=True, text=True,
+                       input="".join(json.dumps(c) + "\n" for c in commands),
+                       encoding="utf-8", errors="replace", env=env2, timeout=60)
+    # 命令 i 的输出在其哨兵 <<<zk-rc=i>>> 之前:parts[k] 是第 k+1 条命令的输出,
+    # 返回码在 parts[k+1] 的 "N>>>" 前缀里
+    parts = p.stdout.split("<<<zk-rc=")
+    segs = []
+    for k, part in enumerate(parts[1:]):
+        segs.append((part.split(">>>", 1)[0], parts[k]))
+    return segs, p.returncode
+
+secA, secB = "cacheSecretA", "cacheSecretB-longer"
+cA, cB = ser(secA).dumps({"v": 1}), ser(secB).dumps({"v": 2})
+with open(WL, "w") as f:
+    f.write("\n".join(["filler%04d" % i for i in range(2000)] + [secA]) + "\n")
+cmds = [
+    ["flask", "crack", "--cookie", cA, "--wordlist", WL, "--engine", "auto", "--threads", "2"],
+    ["flask", "crack", "--cookie", cA, "--wordlist", WL, "--engine", "auto", "--threads", "2"],
+    ["flask", "crack", "--cookie", cA, "--wordlist", WL, "--engine", "cpu"],
+]
+res, rc = serve_run(cmds, {"ZK_GPUTHRESH": "1"})
+check("T18-serve-cache-session", rc == 0 and len(res) == 3)
+if len(res) == 3:
+    check("T18-cache-first-load", res[0][0] == "0" and secA in res[0][1])
+    check("T18-cache-hit-reuse", res[1][0] == "0" and secA in res[1][1])
+    check("T18-cache-cpu-engine", res[2][0] == "0" and secA in res[2][1])
+
+# 改写同名字典(不同 size + 新 mtime)→ 缓存必须失效:新密钥能找到,旧密钥报未命中
+with open(WL, "w") as f:
+    f.write("\n".join(["g%05d" % i for i in range(1500)] + [secB]) + "\n")
+st = os.stat(WL)
+os.utime(WL, (st.st_atime, st.st_mtime + 5))
+cmds = [
+    ["flask", "crack", "--cookie", cB, "--wordlist", WL, "--engine", "auto", "--threads", "2"],
+    ["flask", "crack", "--cookie", cA, "--wordlist", WL, "--engine", "auto", "--threads", "2"],
+]
+res, rc = serve_run(cmds, {"ZK_GPUTHRESH": "1"})
+if len(res) == 2:
+    check("T18-cache-invalidate-find-new", res[0][0] == "0" and secB in res[0][1],
+          res[0][1].strip().splitlines()[-1][:60] if res[0][1].strip() else "")
+    check("T18-cache-invalidate-miss-old", res[1][0] == "1" and secA not in res[1][1])
+else:
+    check("T18-cache-invalidate", False, f"segments={len(res)}")
+
+# 预算禁用(0)与预算不足(1MB 装不下)两种情形:结果仍须正确(退化无缓存行为)
+for tag, extra in (("disabled", {"ZK_DICTCACHE_MB": "0"}), ("over-budget", {"ZK_DICTCACHE_MB": "1"})):
+    res, rc = serve_run([["flask", "crack", "--cookie", cB, "--wordlist", WL,
+                          "--engine", "cpu"]], extra)
+    check(f"T18-cache-{tag}", rc == 0 and len(res) == 1 and res[0][0] == "0" and secB in res[0][1])
+os.unlink(WL)
+
 print()
 print("=" * 40)
 if fails:

@@ -1,0 +1,124 @@
+{
+  "test_vectors": {
+    "returncode": 0,
+    "pass": 86,
+    "fail": []
+  },
+  "adversarial_test": {
+    "returncode": 0,
+    "pass": 60,
+    "fail": []
+  },
+  "targeted": [
+    {
+      "name": "original-long-head-0",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0862641 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "original-long-head-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0658037 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "original-long-head-2",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0592714 s\nLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\n"
+    },
+    {
+      "name": "nul-head-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0586455 s\nA\u0000B\n"
+    },
+    {
+      "name": "nul-head-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 引擎 GPU+CPU 补验,命中超长词,耗时 0.0418426 s\nA\u0000B\n"
+    },
+    {
+      "name": "mask-boundary-00000000-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 1 个,耗时 0.0137821 s,约 1222074429/s\n00000000\n"
+    },
+    {
+      "name": "mask-boundary-16777215-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 16777216 个,耗时 0.365968 s,约 51215599/s\n16777215\n"
+    },
+    {
+      "name": "mask-boundary-16777216-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 16777217 个,耗时 0.359085 s,约 98919509/s\n16777216\n"
+    },
+    {
+      "name": "mask-boundary-99999999-1",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),CPU 侧命中,耗时 0.352493 s,约 47781792/s\n99999999\n"
+    },
+    {
+      "name": "mask-boundary-00000000-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 1 个,耗时 0.0206682 s,约 824423994/s\n00000000\n"
+    },
+    {
+      "name": "mask-boundary-16777215-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 16777216 个,耗时 0.386108 s,约 60086089/s\n16777215\n"
+    },
+    {
+      "name": "mask-boundary-16777216-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),GPU 侧命中于第 16777217 个,耗时 0.35655 s,约 112489316/s\n16777216\n"
+    },
+    {
+      "name": "mask-boundary-99999999-4",
+      "pass": true,
+      "returncode": 0,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU(gfx1036),CPU 侧命中,耗时 0.350126 s,约 48853502/s\n99999999\n"
+    },
+    {
+      "name": "mask-no-hit",
+      "pass": true,
+      "returncode": 1,
+      "output": "[*] 掩码共 8 位,组合 100000000 个\n[*] 引擎 GPU+CPU,跑完未命中,耗时 1.5497 s,约 64528626/s\n"
+    }
+  ],
+  "exe_sha256": "22b79c636de009fd034b315ad267a5fe194cc0e1b35928004b4c90cf2ac21528",
+  "observed_source_hashes_at_test_end": {
+    "src\\b64.h": "dc999cdf8843e834dddd0fb90a911322721de364956ba2a6f23a04395353120c",
+    "src\\crack_cpu.cpp": "f6849dcfb99bf67c1e6d524a6f93e15b248ea06d08c7dcdb1a5029cf6c6ff00a",
+    "src\\crack_cpu.h": "4608ff774d3efe9beb0098d566cecc0301b2f7ab4f477f8e64c007cea40ff89f",
+    "src\\flask.cpp": "49b9b585e66cccd67024f927af72eb1e9c21c9f465552f78393576f51013199a",
+    "src\\flask.h": "fa390f3374fa62ef19054f9d9c1a9f6ec8b452da0747f96eb79bf3978ba42d5b",
+    "src\\json_mini.h": "10eb60975c7e7f20be238302801c1ea29c8dffdf3c49f17df08448ebfef6b7be",
+    "src\\main.cpp": "56da04858217bbccdf51bdc299c4bcbf6ae936571549b29ddf8803880615d26a",
+    "src\\sha1.h": "57181886bfa4ea4e8c17c9945f336a9ed52c8b8c1b7e614ca21503b84f5dedc8",
+    "src\\thread_group.h": "f67082af5b0bff1f679606ac4cd17902871de846317980a9a1183f0443e8b2c4",
+    "src\\gpu\\divmagic.h": "fda43059738b9d5ac2f2dbc9dc4e1bfa4bfa6dcaa27a6a646f49f184cc8f2101",
+    "src\\gpu\\kernel_cl.h": "d6215660c0eb3019aea16bf968446e1e520f4a7c6c96de493977c853bae5c66a",
+    "src\\gpu\\nvrtc.cpp": "fc65410184fa557649a1ed0e675efa6655648f85498c4b82696345695e44b7a4",
+    "src\\gpu\\nvrtc.h": "5cdb49f4aae53d91f9c69993a1aa70f4a1afdb2b25ae3781ddc82ce04beb6493",
+    "src\\gpu\\ocl.cpp": "6bf6d7c0b6b086a86a6c903526778a63ffdddc635cdc02d119cc3b1d8e943060",
+    "src\\gpu\\ocl.h": "9fe0efd416ab24d2cf85744d70446a8f78b09ca7d22e791b6a41e88240a5e9e0",
+    "src\\gpu\\ocl_stub.cpp": "a378ca32801c70ccd15e5de0ca247663b25f85397c263a3aa50d1a5de4ee0d6d"
+  },
+  "binary_provenance": {
+    "origin": "bin/zemu-flask.exe",
+    "origin_last_write_local": "2026-09-07 15:30:36",
+    "method": "copied existing completed binary; compilation during later WordSet edits failed on transient mixed interfaces",
+    "scope": "completed hybrid skip/claim fix; NOT later WordSet migration",
+    "sha256": "22b79c636de009fd034b315ad267a5fe194cc0e1b35928004b4c90cf2ac21528"
+  }
+}

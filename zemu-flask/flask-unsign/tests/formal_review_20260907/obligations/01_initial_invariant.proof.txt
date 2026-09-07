@@ -1,0 +1,30 @@
+(let ((a!1 (rewrite (= (> N 0) (not (<= N 0)))))
+      (a!2 (not (and true
+                     true
+                     (>= N 0)
+                     (>= N 0)
+                     (<= N N)
+                     true
+                     true
+                     (= (< x N) true)
+                     (=> false (< x 0)))))
+      (a!3 (not (<= (+ N (* (- 1) x)) 0)))
+      (a!6 (or (not (>= N 0)) (<= (+ N (* (- 1) x)) 0)))
+      (a!11 (rewrite (= (< x N) (not (<= N x))))))
+(let ((a!4 (= a!2 (not (and (>= N 0) a!3))))
+      (a!7 (rewrite (= (and (>= N 0) a!3) (not a!6))))
+      (a!8 (= (not (and (>= N 0) a!3)) (not (not a!6))))
+      (a!9 (rewrite (= (not (not a!6)) a!6)))
+      (a!10 (= (not (and (>= N 0) a!3)) a!6))
+      (a!12 (rewrite (= (not (<= N x)) a!3))))
+(let ((a!5 (mp (asserted a!2) (rewrite a!4) (not (and (>= N 0) a!3))))
+      (a!13 (mp (asserted (< x N)) (trans a!11 a!12 (= (< x N) a!3)) a!3)))
+(let ((a!14 (unit-resolution (mp a!5
+                                 (trans (monotonicity a!7 a!8) a!9 a!10)
+                                 a!6)
+                             a!13
+                             (not (>= N 0)))))
+  (unit-resolution (th-lemma (or (>= N 0) (<= N 0)))
+                   (mp (asserted (> N 0)) a!1 (not (<= N 0)))
+                   a!14
+                   false)))))

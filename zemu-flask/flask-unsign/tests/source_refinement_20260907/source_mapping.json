@@ -1,0 +1,7 @@
+{
+  "source": "snapshot\\src\\gpu\\ocl.cpp",
+  "source_sha256": "56e1a612752be2cb58b406a602b4be03145af34519d02f322af14237daa4d439",
+  "begin_line": 617,
+  "exact_branch_sha256": "2608340f78407ea998db75170557626eb84e65d43c2ea7c2dfe69871b493e514",
+  "correspondence": "verbatim production branch; modeled API/types; one-chunk continuation"
+}

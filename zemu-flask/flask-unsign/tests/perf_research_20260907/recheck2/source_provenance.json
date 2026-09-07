@@ -1,0 +1,21 @@
+{
+  "compiled_source_hashes": {
+    "b64.h": "dc999cdf8843e834dddd0fb90a911322721de364956ba2a6f23a04395353120c",
+    "crack_cpu.cpp": "d22cf9802cf2e0228e846aa35032bfb5740d29bc3a57e94814533c2ceaeeb205",
+    "crack_cpu.h": "c7d5476a95e5e0f936f884ef50d0427e5166b74c1ab42a587cdc5dff6ea18ec8",
+    "flask.cpp": "b14d2be04b586c7dadcc880e3669a3aeb0cddcbb7e4014b5354142c9c5fc898a",
+    "flask.h": "9566318ed341f48bbe64302ac60f660df6ef068824abb8655cd50e5ab93deeac",
+    "json_mini.h": "10eb60975c7e7f20be238302801c1ea29c8dffdf3c49f17df08448ebfef6b7be",
+    "main.cpp": "dbe49530f03a5a949dba1d6a28a570d61c386ff68712335e0af675b16c8a7bd8",
+    "sha1.h": "57181886bfa4ea4e8c17c9945f336a9ed52c8b8c1b7e614ca21503b84f5dedc8",
+    "thread_group.h": "f67082af5b0bff1f679606ac4cd17902871de846317980a9a1183f0443e8b2c4",
+    "gpu\\divmagic.h": "fda43059738b9d5ac2f2dbc9dc4e1bfa4bfa6dcaa27a6a646f49f184cc8f2101",
+    "gpu\\kernel_cl.h": "d6215660c0eb3019aea16bf968446e1e520f4a7c6c96de493977c853bae5c66a",
+    "gpu\\nvrtc.cpp": "fc65410184fa557649a1ed0e675efa6655648f85498c4b82696345695e44b7a4",
+    "gpu\\nvrtc.h": "5cdb49f4aae53d91f9c69993a1aa70f4a1afdb2b25ae3781ddc82ce04beb6493",
+    "gpu\\ocl.cpp": "6bf6d7c0b6b086a86a6c903526778a63ffdddc635cdc02d119cc3b1d8e943060",
+    "gpu\\ocl.h": "1f3ee44d750333488a6bc919ec2ca64d916651abbc641c76adc068ad11b294fd",
+    "gpu\\ocl_stub.cpp": "c64438d11c5fcf1f0d229c3d46c6b32e2dbca546e6e229a62b73cac883392115"
+  },
+  "changed_since_snapshot": []
+}

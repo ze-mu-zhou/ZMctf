@@ -1,0 +1,230 @@
+(let ((a!1 (ite (<= (+ N (* (- 1) H)) 16777216) N (+ 16777216 H)))
+      (a!3 (not (<= (+ N (* (- 1) H)) 16777216)))
+      (a!11 (ite (< (+ H 16777216) N) (+ H 16777216) N))
+      (a!15 (= (>= (+ x (* (- 1) T)) 0) (= cs 0)))
+      (a!24 (not (>= (+ N (* (- 1) T)) 0)))
+      (a!30 (and (>= R 0)
+                 (<= R H)
+                 (<= H N)
+                 (>= T 0)
+                 (<= T N)
+                 (>= cs 0)
+                 (<= cs 3)
+                 (= (= cs 0) (< x T))
+                 (=> (= cs 3) (< x H))))
+      (a!31 (not (>= (+ x (* (- 1) H)) 0)))
+      (a!41 (= (<= seenT N) (>= (+ N (* (- 1) seenT)) 0)))
+      (a!58 (rewrite (= (< H seenT) (not (<= seenT H)))))
+      (a!59 (not (>= (+ H (* (- 1) seenT)) 0)))
+      (a!80 (rewrite (= (< x N) (not (<= N x)))))
+      (a!81 (not (<= (+ N (* (- 1) x)) 0)))
+      (a!88 (rewrite (= (< H N) (not (<= N H)))))
+      (a!89 (not (<= (+ N (* (- 1) H)) 0))))
+(let ((a!2 (or (not (= N a!1)) (<= (+ N (* (- 1) a!1)) 0)))
+      (a!4 (or (<= (+ N (* (- 1) H)) 16777216) (= a!1 (+ 16777216 H))))
+      (a!5 (>= (+ a!1 (* (- 1) (+ 16777216 H))) 0))
+      (a!12 (=> (= cs 3) (< x (ite (> a!11 seenT) seenT a!11))))
+      (a!14 (ite (<= (+ a!1 (* (- 1) seenT)) 0) a!1 seenT))
+      (a!32 (and (>= R 0)
+                 (>= (+ H (* (- 1) R)) 0)
+                 (>= (+ N (* (- 1) H)) 0)
+                 (>= T 0)
+                 (>= (+ N (* (- 1) T)) 0)
+                 (>= cs 0)
+                 (<= cs 3)
+                 (not a!15)
+                 (or (not (= cs 3)) a!31)))
+      (a!42 (mp (asserted (<= seenT N))
+                (rewrite a!41)
+                (>= (+ N (* (- 1) seenT)) 0)))
+      (a!46 (not (<= (+ a!1 (* (- 1) seenT)) 0)))
+      (a!47 (hypothesis (<= (+ a!1 (* (- 1) seenT)) 0)))
+      (a!60 (rewrite (= (not (<= seenT H)) a!59)))
+      (a!82 (rewrite (= (not (<= N x)) a!81)))
+      (a!84 (hypothesis (<= (+ N (* (- 1) a!1)) 0)))
+      (a!85 (not (<= (+ N (* (- 1) a!1)) 0)))
+      (a!90 (rewrite (= (not (<= N H)) a!89))))
+(let ((a!6 (or (not (= a!1 (+ 16777216 H))) a!5))
+      (a!13 (and (>= R 0)
+                 (<= R (ite (> a!11 seenT) seenT a!11))
+                 (<= (ite (> a!11 seenT) seenT a!11) N)
+                 (>= T 0)
+                 (<= T N)
+                 (>= cs 0)
+                 (<= cs 3)
+                 (= (= cs 0) (< x T))
+                 a!12))
+      (a!16 (not (>= (+ x (* (- 1) a!14)) 0)))
+      (a!21 (not (<= (+ R (* (- 1) a!14)) 0)))
+      (a!23 (not (>= (+ N (* (- 1) a!14)) 0)))
+      (a!33 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (>= R 0)))
+      (a!34 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (>= T 0)))
+      (a!35 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (>= (+ N (* (- 1) T)) 0)))
+      (a!36 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (>= cs 0)))
+      (a!37 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (<= cs 3)))
+      (a!38 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (not a!15)))
+      (a!43 (or (not (= seenT a!14)) (>= (+ seenT (* (- 1) a!14)) 0)))
+      (a!44 (or (<= (+ a!1 (* (- 1) seenT)) 0) (= seenT a!14)))
+      (a!45 (or (not (= a!1 a!14)) (>= (+ a!1 (* (- 1) a!14)) 0)))
+      (a!48 (unit-resolution (def-axiom (or a!46 (= a!1 a!14)))
+                             a!47
+                             (= a!1 a!14)))
+      (a!50 (or a!46 (>= (+ N (* (- 1) a!14)) 0)))
+      (a!54 (or (not (= a!1 a!14)) (<= (+ a!1 (* (- 1) a!14)) 0)))
+      (a!55 (or (not (= seenT a!14)) (<= (+ seenT (* (- 1) a!14)) 0)))
+      (a!61 (mp (asserted (< H seenT))
+                (trans a!58 a!60 (= (< H seenT) a!59))
+                a!59))
+      (a!62 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (or (not (= cs 3)) a!31)))
+      (a!65 (hypothesis (<= (+ seenT (* (- 1) a!14)) 0)))
+      (a!66 (not (<= (+ seenT (* (- 1) a!14)) 0)))
+      (a!69 (and-elim (mp (asserted a!30) (rewrite (= a!30 a!32)) a!32)
+                      (>= (+ H (* (- 1) R)) 0)))
+      (a!74 (hypothesis (>= (+ x (* (- 1) a!14)) 0)))
+      (a!83 (mp (asserted (< x N)) (trans a!80 a!82 (= (< x N) a!81)) a!81))
+      (a!91 (mp (asserted (< H N)) (trans a!88 a!90 (= (< H N) a!89)) a!89)))
+(let ((a!7 (unit-resolution (th-lemma a!6)
+                            (hypothesis (= a!1 (+ 16777216 H)))
+                            (hypothesis (not a!5))
+                            false))
+      (a!17 (and (>= R 0)
+                 (<= (+ R (* (- 1) a!14)) 0)
+                 (>= (+ N (* (- 1) a!14)) 0)
+                 (>= T 0)
+                 (>= (+ N (* (- 1) T)) 0)
+                 (>= cs 0)
+                 (<= cs 3)
+                 (not a!15)
+                 (or (not (= cs 3)) a!16)))
+      (a!22 (not (or (not (= cs 3)) a!16)))
+      (a!39 (mp a!38 (rewrite (= (not a!15) (not a!15))) (not a!15)))
+      (a!49 (unit-resolution (th-lemma a!45) a!48 (>= (+ a!1 (* (- 1) a!14)) 0)))
+      (a!56 (or (or (not (= cs 3)) a!16) (>= (+ x (* (- 1) a!14)) 0)))
+      (a!63 (or (or (not (= cs 3)) a!16) (= cs 3)))
+      (a!67 (or (or (not (= cs 3)) a!16) a!66))
+      (a!75 (or (not a!5) (>= (+ x (* (- 1) H)) 0) a!16)))
+(let ((a!8 (unit-resolution (lemma a!7 a!6)
+                            (hypothesis (not a!5))
+                            (not (= a!1 (+ 16777216 H)))))
+      (a!18 (mp (asserted (not a!13))
+                (rewrite (= (not a!13) (not a!17)))
+                (not a!17)))
+      (a!19 (monotonicity (rewrite (= (not a!15) (not a!15))) (= a!17 a!17)))
+      (a!25 (or a!15
+                (not (>= cs 0))
+                a!21
+                a!22
+                (not (<= cs 3))
+                (not (>= T 0))
+                (not (>= R 0))
+                a!23
+                a!24))
+      (a!51 (unit-resolution (lemma (th-lemma a!42
+                                              (hypothesis a!23)
+                                              a!49
+                                              a!47
+                                              false)
+                                    a!50)
+                             (hypothesis a!23)
+                             a!46))
+      (a!57 (unit-resolution (def-axiom a!56)
+                             (hypothesis a!22)
+                             (>= (+ x (* (- 1) a!14)) 0)))
+      (a!64 (unit-resolution a!62
+                             (unit-resolution (def-axiom a!63)
+                                              (hypothesis a!22)
+                                              (= cs 3))
+                             a!31)))
+(let ((a!9 (unit-resolution (def-axiom a!4) a!8 (<= (+ N (* (- 1) H)) 16777216)))
+      (a!20 (mp a!18 (monotonicity a!19 (= (not a!17) (not a!17))) (not a!17)))
+      (a!26 (trans a!19 (rewrite (= a!17 (not a!25))) (= a!17 (not a!25))))
+      (a!28 (rewrite (= (not (not a!25)) a!25)))
+      (a!52 (unit-resolution (th-lemma a!43)
+                             (unit-resolution (def-axiom a!44)
+                                              a!51
+                                              (= seenT a!14))
+                             (>= (+ seenT (* (- 1) a!14)) 0)))
+      (a!68 (unit-resolution (lemma (th-lemma a!57 a!61 a!64 a!65 false) a!67)
+                             a!65
+                             (or (not (= cs 3)) a!16))))
+(let ((a!10 (unit-resolution (def-axiom (or a!3 (= N a!1))) a!9 (= N a!1)))
+      (a!27 (monotonicity a!26 (= (not a!17) (not (not a!25)))))
+      (a!53 (lemma (th-lemma a!42 (hypothesis a!23) a!52 false)
+                   (>= (+ N (* (- 1) a!14)) 0))))
+(let ((a!29 (mp a!20 (trans a!27 a!28 (= (not a!17) a!25)) a!25)))
+(let ((a!40 (unit-resolution a!29
+                             a!33
+                             a!34
+                             a!35
+                             a!36
+                             a!37
+                             a!39
+                             (or a!21 a!22 a!23))))
+(let ((a!70 (unit-resolution (th-lemma a!55)
+                             (hypothesis (= seenT a!14))
+                             (lemma (th-lemma (unit-resolution a!40
+                                                               a!68
+                                                               a!53
+                                                               a!21)
+                                              a!61
+                                              a!69
+                                              a!65
+                                              false)
+                                    a!66)
+                             false)))
+(let ((a!71 (unit-resolution (def-axiom a!44)
+                             (lemma a!70 (not (= seenT a!14)))
+                             (<= (+ a!1 (* (- 1) seenT)) 0))))
+(let ((a!72 (unit-resolution (def-axiom (or a!46 (= a!1 a!14)))
+                             a!71
+                             (= a!1 a!14))))
+(let ((a!73 (unit-resolution (th-lemma a!54) a!72 (<= (+ a!1 (* (- 1) a!14)) 0))))
+(let ((a!76 (unit-resolution (lemma (th-lemma (hypothesis a!31)
+                                              a!73
+                                              a!74
+                                              (hypothesis a!5)
+                                              false)
+                                    a!75)
+                             a!64
+                             a!57
+                             (not a!5))))
+(let ((a!77 (unit-resolution (lemma a!7 a!6) a!76 (not (= a!1 (+ 16777216 H))))))
+(let ((a!78 (unit-resolution (def-axiom a!4)
+                             a!77
+                             (<= (+ N (* (- 1) H)) 16777216))))
+(let ((a!79 (unit-resolution (def-axiom (or a!3 (= N a!1))) a!78 (= N a!1))))
+(let ((a!86 (unit-resolution (th-lemma a!2)
+                             a!79
+                             (unit-resolution (lemma (th-lemma a!83
+                                                               a!84
+                                                               a!74
+                                                               a!73
+                                                               false)
+                                                     (or a!85 a!16))
+                                              a!57
+                                              a!85)
+                             false)))
+(let ((a!87 (lemma a!86 (or (not (= cs 3)) a!16))))
+(let ((a!92 (th-lemma (unit-resolution (unit-resolution a!40
+                                                        a!53
+                                                        (or a!21 a!22))
+                                       a!87
+                                       a!21)
+                      a!69
+                      a!91
+                      a!73
+                      a!85)))
+  (th-lemma (lemma (unit-resolution (th-lemma a!2) a!10 a!92 false) a!5)
+            a!73
+            a!69
+            (unit-resolution (unit-resolution a!40 a!53 (or a!21 a!22))
+                             a!87
+                             a!21)
+            false)))))))))))))))))))))

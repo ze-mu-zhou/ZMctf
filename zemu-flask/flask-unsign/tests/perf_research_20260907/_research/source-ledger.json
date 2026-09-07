@@ -1,0 +1,266 @@
+{
+  "scope": "current source execution paths; windows fresh CLI and serve; synthetic offline no-hit workloads",
+  "sources": [
+    {
+      "title": "Microsoft File Caching",
+      "publisher": "Microsoft",
+      "date": "2021-01-07",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/fileio/file-caching",
+      "claim": "Windows 默认文件缓存；热文件不等于物理盘测量",
+      "native": "turn7view0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Microsoft File Buffering",
+      "publisher": "Microsoft",
+      "date": "2025-05-31",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/fileio/file-buffering",
+      "claim": "NO_BUFFERING 绕过系统缓存且有对齐约束",
+      "native": "turn7view1",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Reading and Writing From a File View",
+      "publisher": "Microsoft",
+      "date": "2021-09-03",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/memory/reading-and-writing-from-a-file-view",
+      "claim": "文件映射可能抛 in-page I/O 异常",
+      "native": "turn7view2",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "basic_string.h",
+      "publisher": "GCC contributors",
+      "date": "main/master；未固定commit",
+      "url": "https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/basic_string.h",
+      "claim": "小字符串容量结构；本机安装头文件另行确认15字节",
+      "native": "turn15view3",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Random Interleaving",
+      "publisher": "Google Benchmark contributors",
+      "date": "main；未固定commit",
+      "url": "https://github.com/google/benchmark/blob/main/docs/random_interleaving.md",
+      "claim": "交错重复测量方法",
+      "native": "turn15view1",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Reducing Variance",
+      "publisher": "Google Benchmark contributors",
+      "date": "main；未固定commit",
+      "url": "https://github.com/google/benchmark/blob/main/docs/reducing_variance.md",
+      "claim": "频率、SMT、调度和cache造成方差",
+      "native": "turn15view2",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Intel SHA Extensions",
+      "publisher": "Intel",
+      "date": "2013-07-17",
+      "url": "https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sha-extensions.html",
+      "claim": "SHA1 W schedule与chaining state分离，80轮；支持预展开算法可行性",
+      "native": "turn26view0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Intel Multi-Buffer Crypto for IPsec Library",
+      "publisher": "Intel",
+      "date": "main；未固定commit",
+      "url": "https://github.com/intel/intel-ipsec-mb",
+      "claim": "SHA1/HMAC多种x2/x8/x16路径存在",
+      "native": "turn30view0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Ubuntu Tuning Guide for AMD EPYC 8004 Series",
+      "publisher": "AMD",
+      "date": "rev1.0；正文版本访问",
+      "url": "https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58305_amd-epyc-8004-tg-ubuntu.pdf",
+      "claim": "Zen4 AVX512256位数据通路；仅架构参考不是7940HX频率实测",
+      "native": "turn29view0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Optimize Options",
+      "publisher": "GCC",
+      "date": "当前在线版",
+      "url": "https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html",
+      "claim": "展开不保证提速；LTO/PGO能力",
+      "native": "turn1search0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "x86 Options",
+      "publisher": "GCC",
+      "date": "当前在线版",
+      "url": "https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html",
+      "claim": "mtune/march不同约束",
+      "native": "turn29view2",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "m29100_a3-pure.cl",
+      "publisher": "hashcat contributors",
+      "date": "master；未固定commit",
+      "url": "https://raw.githubusercontent.com/hashcat/hashcat/master/OpenCL/m29100_a3-pure.cl",
+      "claim": "紧凑候选words、两级HMAC、固定salt",
+      "native": "turn29view3",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "autotune.c",
+      "publisher": "hashcat contributors",
+      "date": "master；未固定commit",
+      "url": "https://raw.githubusercontent.com/hashcat/hashcat/master/src/autotune.c",
+      "claim": "loops/threads/accel多维调优",
+      "native": "turn28view2",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "clFlush",
+      "publisher": "Khronos",
+      "date": "在线规范，无独立发布日期；版权2014–2026",
+      "url": "https://registry.khronos.org/OpenCL/specs/unified/refpages/man/html/clFlush.html",
+      "claim": "跨队列producer flush规则",
+      "native": "turn27view0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "clGetEventProfilingInfo",
+      "publisher": "Khronos",
+      "date": "在线规范，无独立发布日期",
+      "url": "https://registry.khronos.org/OpenCL/specs/unified/refpages/man/html/clGetEventProfilingInfo.html",
+      "claim": "profiling queue; queued/submit/start/end时间戳",
+      "native": "turn27view1",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "clGetKernelWorkGroupInfo",
+      "publisher": "Khronos",
+      "date": "在线规范，无独立发布日期",
+      "url": "https://registry.khronos.org/OpenCL/specs/unified/refpages/man/html/clGetKernelWorkGroupInfo.html",
+      "claim": "private最低内存、最大workgroup不是完整occupancy",
+      "native": "turn27view2",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "CUDA Best Practices Guide",
+      "publisher": "NVIDIA",
+      "date": "13.3在线版",
+      "url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html",
+      "claim": "pinned成本、async stream overlap等条件；不证明本项目倍数",
+      "native": "turn28view4",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Nsight Compute Profiling Guide",
+      "publisher": "NVIDIA",
+      "date": "13.3在线版",
+      "url": "https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html",
+      "claim": "动态下标及register spill可产生local访问；建议计数器验证",
+      "native": "turn28view5",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "nvidia-smi documentation",
+      "publisher": "NVIDIA",
+      "date": "当前在线版",
+      "url": "https://docs.nvidia.com/deploy/nvidia-smi/index.html",
+      "claim": "utilization采样窗和含义，不是occupancy",
+      "native": "turn25search0",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    },
+    {
+      "title": "Troubleshoot processes and threads using WPR and WPA",
+      "publisher": "Microsoft",
+      "date": "2026-02-12",
+      "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/support-tools/support-tools-xperf-wpa-wpr",
+      "claim": "CPU sampled/precise、分配/等待工具",
+      "native": "turn25search3",
+      "access_date": "2026-09-07",
+      "confidence": "primary evidence; project-specific speedups not inferred from source"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "CPU 字典加载容器开销应优先",
+      "evidence": "actual loader source; 5-run isolated load checksum/RSS; fresh CLI stage gap",
+      "confidence": "high",
+      "gap": "flat未接入完整engine;无冷盘/长词分布"
+    },
+    {
+      "claim": "GPU fresh init影响主要",
+      "evidence": "fresh vs serve; gpuinfo2.01/2.48s; oclHostAlloc calls ocl",
+      "confidence": "high for aggregate startup, moderate causal breakdown",
+      "gap": "未对枚举context/build逐API计时"
+    },
+    {
+      "claim": "混合长词漏查",
+      "evidence": "static flow+3/3 live failure, CPU/GPU positive controls",
+      "confidence": "high",
+      "gap": "NUL同路径推断,未单独实测"
+    },
+    {
+      "claim": "混合认领竞态",
+      "evidence": "two independent reviews, sequential-consistent interleaving",
+      "confidence": "high static",
+      "gap": "未加确定性交错hook"
+    },
+    {
+      "claim": "OpenCL flush缺口",
+      "evidence": "no clFlush + Khronos cross queue rule",
+      "confidence": "high",
+      "gap": "current driver behavior/event trace not measured"
+    },
+    {
+      "claim": "SIMD展开固定schedule改善",
+      "evidence": "source and real disassembly; Intel SHA math",
+      "confidence": "high feasibility / unknown benefit",
+      "gap": "A/B未实现"
+    }
+  ],
+  "searches": {
+    "parent_queries": [
+      "site.microsoft.com file mapping file cache sequential access performance ReadFile memory mapped files",
+      "site.gcc.gnu.org basic_string _S_local_capacity 15 basic_string reserve vector reallocation",
+      "site.nvidia.com Nsight Systems CUDA profiling application startup overhead CPU GPU overlap",
+      "site.benchmark.readthedocs.io reducing variance benchmarks repetitions CPU frequency scaling",
+      "site.learn.microsoft.com/en-us/windows/win32/fileio file buffering sequential scan",
+      "site.gcc.gnu.org/onlinedocs/gcc Optimize Options flto fprofile-use",
+      "site.benchmark.readthedocs.io reducing_variance",
+      "site.learn.microsoft.com/en-us/windows/win32/memory reading writing file view memory mapped",
+      "site.github.com/gcc-mirror/gcc basic_string.h _S_local_capacity 15",
+      "site.open-std.org vector reserve capacity reallocation complexity",
+      "site.learn.microsoft.com FILE_FLAG_SEQUENTIAL_SCAN performance prefetch cache manager Raymond Chen",
+      "site.developer.nvidia.com dynamic boost CPU GPU power laptop performance",
+      "site.registry.khronos.org OpenCL To use event objects clFlush",
+      "site.docs.nvidia.com nvidia-smi GPU utilization sample period one second one sixth second",
+      "site.learn.microsoft.com Windows Performance Recorder CPU usage precise file I/O heap allocation",
+      "site.nvidia.com CUDA initialization context overhead lazy loading module loading performance"
+    ],
+    "cpu_lane": "8 targeted searches: Intel SHA / Intel multibuffer implementations / AMD Zen4 / GCC optimize and tuning / hashcat Flask",
+    "gpu_lane": "10 targeted searches: Khronos flush/profiling/workgroup; NVIDIA transfers/occupancy/Ada/NVRTC/profiling; hashcat autotune/graphs",
+    "stop_reason": "Material source claims supported; remaining gaps need local implementation A/B/event profiling, not more generic retrieval."
+  }
+}

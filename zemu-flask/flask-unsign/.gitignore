@@ -14,3 +14,12 @@ tests/wl-bench*.txt
 *.user
 .DS_Store
 Thumbs.db
+
+# 20260907 研究/评审目录:只入库报告、脚本与小数据;第三方工具与大型再生 fixture 忽略
+tests/formal_review_20260907/_deps/
+tests/source_refinement_20260907/tools/
+tests/perf_research_20260907/*.exe
+tests/perf_research_20260907/hybrid_long_fixture.txt
+tests/perf_research_20260907/recheck/nul_fixture.txt
+tests/perf_research_20260907/recheck2/nul_fixture.txt
+tests/perf_research_20260907/recheck2/capacity_fixture.txt
