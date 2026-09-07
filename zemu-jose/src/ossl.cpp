@@ -1,17 +1,19 @@
 /** ossl.cpp — OpenSSL 桥接实现。链接 -lcrypto。
- * EC JWK 手动构造(避免依赖 OSSL_DECODER 的 JWK 支持版本差异):
- * crv P-256/384/521,x,y,d → EC_KEY → EVP_PKEY。
+ * EC/OKP JWK 手动构造(避免依赖 OSSL_DECODER 的 JWK 支持版本差异)。
  */
 #include "ossl.h"
 
 #include <openssl/bn.h>
-#include <openssl/ec.h>
+#include <openssl/core_names.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/ecdsa.h>
+#include <openssl/param_build.h>
 #include <openssl/pem.h>
 
 #include <cstring>
 #include <memory>
+#include <string_view>
 
 #include "b64.h"
 #include "json_mini.h"
@@ -53,12 +55,11 @@ bool parseJwkJson(const std::string& jsonText, Json& j) {
   return parser.parse(j) && j.type == Json::OBJ;
 }
 
-/** crv 名 → EC 曲线 NID */
-int curveNid(const std::string& crv) {
-  if (crv == "P-256") return NID_X9_62_prime256v1;
-  if (crv == "P-384") return NID_secp384r1;
-  if (crv == "P-521") return NID_secp521r1;
-  return NID_undef;
+std::size_t curveCoordBytes(const std::string& crv) {
+  if (crv == "P-256") return 32;
+  if (crv == "P-384") return 48;
+  if (crv == "P-521") return 66;
+  return 0;
 }
 
 }  // namespace
@@ -85,54 +86,45 @@ void* loadEcJwk(const std::string& jsonText, bool wantPrivate) {
   std::string crv;
   for (auto& [k, v] : j.obj)
     if (k == "crv" && v.type == Json::STR) crv = v.str;
-  int nid = curveNid(crv);
-  if (nid == NID_undef) return nullptr;
+  const std::size_t coord = curveCoordBytes(crv);
+  if (coord == 0) return nullptr;
   std::vector<std::uint8_t> x, y, d;
   if (!jwkField(j, "x", x) || !jwkField(j, "y", y)) return nullptr;
-  EC_KEY* ec = EC_KEY_new_by_curve_name(nid);
-  if (!ec) return nullptr;
-  BN_CTX* ctx = BN_CTX_new();
-  bool ok = false;
-  if (ctx) {
-    BIGNUM* bx = BN_bin2bn(x.data(), (int)x.size(), nullptr);
-    BIGNUM* by = BN_bin2bn(y.data(), (int)y.size(), nullptr);
-    if (bx && by) {
-      EC_POINT* pt = EC_POINT_new(EC_KEY_get0_group(ec));
-      if (pt && EC_POINT_set_affine_coordinates(EC_KEY_get0_group(ec), pt, bx, by, ctx) &&
-          EC_KEY_set_public_key(ec, pt)) {
-        ok = true;
-      }
-      if (pt) EC_POINT_free(pt);
-    }
-    if (bx) BN_free(bx);
-    if (by) BN_free(by);
-    BN_CTX_free(ctx);
-  }
+  if (x.size() != coord || y.size() != coord) return nullptr;
+  std::vector<std::uint8_t> pub(1 + coord * 2);
+  pub[0] = 0x04;  // uncompressed EC point
+  std::memcpy(pub.data() + 1, x.data(), coord);
+  std::memcpy(pub.data() + 1 + coord, y.data(), coord);
+
+  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_from_name(nullptr, "EC", nullptr);
+  OSSL_PARAM_BLD* bld = OSSL_PARAM_BLD_new();
+  EVP_PKEY* key = nullptr;
+  BIGNUM* bd = nullptr;
+  OSSL_PARAM* params = nullptr;
+  bool ok = ctx && bld &&
+            OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME,
+                                             crv.c_str(), 0) == 1 &&
+            OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY,
+                                              pub.data(), pub.size()) == 1;
+  int selection = EVP_PKEY_PUBLIC_KEY;
   if (ok && wantPrivate) {
-    std::vector<std::uint8_t> dbytes;
-    if (jwkField(j, "d", dbytes)) {
-      BIGNUM* bd = BN_bin2bn(dbytes.data(), (int)dbytes.size(), nullptr);
-      if (bd && EC_KEY_set_private_key(ec, bd)) {
-        // 校验 d 与公钥匹配(可选,直接信任)
-        ok = true;
-      } else {
-        ok = false;
-      }
-      if (bd) BN_free(bd);
-    } else {
+    if (!jwkField(j, "d", d) || d.empty()) {
       ok = false;
+    } else {
+      bd = BN_bin2bn(d.data(), (int)d.size(), nullptr);
+      ok = bd && OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY, bd) == 1;
+      selection = EVP_PKEY_KEYPAIR;
     }
   }
-  if (!ok) {
-    EC_KEY_free(ec);
-    return nullptr;
+  if (ok) params = OSSL_PARAM_BLD_to_param(bld);
+  if (ok && params && EVP_PKEY_fromdata_init(ctx) == 1 &&
+      EVP_PKEY_fromdata(ctx, &key, selection, params) != 1) {
+    key = nullptr;
   }
-  EVP_PKEY* key = EVP_PKEY_new();
-  if (!key || EVP_PKEY_assign_EC_KEY(key, ec) <= 0) {
-    if (key) EVP_PKEY_free(key);
-    EC_KEY_free(ec);
-    return nullptr;
-  }
+  OSSL_PARAM_free(params);
+  OSSL_PARAM_BLD_free(bld);
+  BN_free(bd);
+  EVP_PKEY_CTX_free(ctx);
   return key;
 }
 
@@ -166,12 +158,30 @@ void* loadOkpJwk(const std::string& jsonText, bool wantPrivate) {
   return key;
 }
 
+bool ecKeyMatchesAlg(void* pkey, int hashBits) {
+  if (!pkey) return false;
+  const char* expected = hashBits == 256 ? "prime256v1"
+                    : (hashBits == 384 ? "secp384r1" : "secp521r1");
+  char actual[80] = {};
+  std::size_t actualLen = 0;
+  if (EVP_PKEY_get_utf8_string_param((EVP_PKEY*)pkey,
+          OSSL_PKEY_PARAM_GROUP_NAME, actual, sizeof(actual), &actualLen) != 1)
+    return false;
+  return std::string_view(actual, actualLen) == expected ||
+         (hashBits == 256 && std::string_view(actual, actualLen) == "P-256") ||
+         (hashBits == 384 && std::string_view(actual, actualLen) == "P-384") ||
+         (hashBits == 512 && std::string_view(actual, actualLen) == "P-521");
+}
+
 int verifyEs(void* pkey, int hashBits, const std::uint8_t* msg, std::size_t mlen,
              const std::uint8_t* sig, std::size_t siglen) {
   MdCtxPtr ctx(EVP_MD_CTX_new());
   if (!ctx) return -1;
   if (EVP_DigestVerifyInit(ctx.get(), nullptr, mdFor(hashBits), nullptr, (EVP_PKEY*)pkey) <= 0)
     return -1;
+  if (!ecKeyMatchesAlg(pkey, hashBits)) return -1;
+  const std::size_t expectedLen = hashBits == 256 ? 64 : (hashBits == 384 ? 96 : 132);
+  if (siglen != expectedLen) return 1;
   // JWT ES* 签名是 raw r||s,OpenSSL ECDSA 是 DER —— 转 DER
   std::size_t coord = siglen / 2;
   if (coord == 0) return -1;

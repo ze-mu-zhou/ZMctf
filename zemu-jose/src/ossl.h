@@ -23,6 +23,9 @@ void* loadEcJwk(const std::string& jsonText, bool wantPrivate);
 /** 从 EdDSA JWK(OKP 类型)加载公/私钥(EVP_PKEY*) */
 void* loadOkpJwk(const std::string& jsonText, bool wantPrivate);
 
+/** 检查 EC 密钥曲线是否与 ES256/384/512 的 JWA 约束匹配。 */
+bool ecKeyMatchesAlg(void* pkey, int hashBits);
+
 /** ES256/384/512 验签(msg 为签名输入原文,sig 为 JWT 的 raw r||s 格式)。
  * 返回 0=通过,1=不通过,负=错误 */
 int verifyEs(void* pkey, int hashBits, const std::uint8_t* msg, std::size_t mlen,

@@ -1,6 +1,7 @@
-/** ocl.h — OpenCL GPU 爆破接口(HS256)。运行时 LoadLibrary 动态加载,零构建期依赖。 */
+/** ocl.h — OpenCL GPU 爆破接口(HS256/HS512)。运行时 LoadLibrary 动态加载,零构建期依赖。 */
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -19,7 +20,11 @@ GpuProbe gpuProbe();
 struct GpuCrackParams {
   const std::vector<std::uint8_t>* msgBlocks = nullptr;  // 签名输入完整填充块
   int nBlocks = 0;
-  const std::vector<std::uint8_t>* expect = nullptr;     // 期望签名 32B
+  const std::vector<std::uint8_t>* expect = nullptr;     // 期望签名 32B/64B
+  int hashBits = 256;
+  std::atomic<std::uint64_t>* hybridHead = nullptr;      // hybrid:GPU 领块起点
+  std::atomic<std::uint64_t>* hybridTail = nullptr;      // hybrid:CPU 未领取尾端
+  std::atomic<bool>* hybridStop = nullptr;               // hybrid:任一侧停止
 };
 
 /** 掩码爆破:返回 0=命中(foundIdx=候选序号),1=跑完未命中,-1=GPU 出错。

@@ -127,6 +127,7 @@ static void usage(std::ostream& os, bool color) {
      << " (" << YE << "--wordlist <f>" << R << " | " << YE << "--mask <掩码>" << R << ")\n"
      << "               [" << YE << "--threads N" << R << "] [" << YE << "--engine auto|gpu|cpu" << R
      << "]  爆破 HS* 密钥\n"
+     << "               auto=大任务 GPU/CPU 对向 hybrid,小任务 CPU; gpu=纯 GPU; cpu=纯 CPU\n"
      << "  " << CY << "selftest" << R << "        SHA-2/HMAC/RSA 自研 vs OpenSSL 对拍\n"
      << "  " << CY << "gpuinfo" << R << "         探测 OpenCL GPU\n"
      << "  " << CY << "gputest" << R << "         GPU 冒烟测试\n"
@@ -188,7 +189,60 @@ static int cmdSelftest() {
     std::cout << (ok ? "  OK(HMAC 热路径与流式一致)" : "  FAIL") << std::endl;
   }
 
-  // 3. RSA vs OpenSSL(生成密钥对拍)
+  // 3. HMAC-SHA384/512 热路径(含函数级 AVX-512 分派) vs 流式
+  {
+    std::string msg = "eyJhbGciOiJIUzUxMiJ9.eyJ4IjoxfQ";
+    for (bool useSha384 : {true, false}) {
+      sha2::HmacSha512FixedMsg fm(
+          std::span<const std::uint8_t>((const std::uint8_t*)msg.data(), msg.size()), useSha384);
+      for (const char* key : {"secret", "password123", ""}) {
+        std::uint8_t m1[64] = {}, m2[64] = {};
+        if (useSha384) {
+          sha2::HmacSha<384> h;
+          h.init(std::string_view(key));
+          h.digest(std::span<const std::uint8_t>((const std::uint8_t*)msg.data(), msg.size()), m1);
+          fm.mac((const std::uint8_t*)key, strlen(key), m2);
+          if (memcmp(m1, m2, 48) != 0) ok = false;
+        } else {
+          sha2::HmacSha<512> h;
+          h.init(std::string_view(key));
+          h.digest(std::span<const std::uint8_t>((const std::uint8_t*)msg.data(), msg.size()), m1);
+          fm.mac((const std::uint8_t*)key, strlen(key), m2);
+          if (memcmp(m1, m2, 64) != 0) ok = false;
+        }
+      }
+      if (sha2::hasAvx512F()) {
+        const char* keys[] = {"00000000", "11111111", "22222222", "33333333",
+                              "44444444", "55555555", "66666666", "77777777"};
+        const std::uint8_t* keyPtrs[8];
+        std::uint8_t batch[8][64] = {};
+        std::uint8_t* outPtrs[8];
+        for (int i = 0; i < 8; i++) {
+          keyPtrs[i] = (const std::uint8_t*)keys[i];
+          outPtrs[i] = batch[i];
+        }
+        const std::size_t keyLen = strlen(keys[0]);
+        fm.mac8(keyPtrs, keyLen, outPtrs);
+        for (int i = 0; i < 8; i++) {
+          std::uint8_t expected[64] = {};
+          if (useSha384) {
+            sha2::HmacSha<384> h;
+            h.init(std::string_view(keys[i]));
+            h.digest(std::span<const std::uint8_t>((const std::uint8_t*)msg.data(), msg.size()), expected);
+            if (memcmp(expected, batch[i], 48) != 0) ok = false;
+          } else {
+            sha2::HmacSha<512> h;
+            h.init(std::string_view(keys[i]));
+            h.digest(std::span<const std::uint8_t>((const std::uint8_t*)msg.data(), msg.size()), expected);
+            if (memcmp(expected, batch[i], 64) != 0) ok = false;
+          }
+        }
+      }
+    }
+    std::cout << (ok ? "  OK(HMAC-SHA384/512 热路径与流式一致)" : "  FAIL") << std::endl;
+  }
+
+  // 4. RSA vs OpenSSL(生成密钥对拍)
   {
     std::cout << "RSA-PKCS1v1.5 vs OpenSSL:" << std::endl;
     // 用 OpenSSL 生成 RSA 密钥对(PEM),我方签名 → OpenSSL 验签;OpenSSL 签名 → 我方验签
@@ -402,10 +456,16 @@ static int runCommand(int argc, char** argv) {
 
 static int cmdServe() {
   std::cerr.rdbuf(std::cout.rdbuf());
+  constexpr std::size_t MAX_SERVE_LINE = 1u << 20;
   std::string line;
   while (std::getline(std::cin, line)) {
     if (!line.empty() && line.back() == '\r') line.pop_back();
     if (line.empty()) continue;
+    if (line.size() > MAX_SERVE_LINE) {
+      std::cout << "[!] serve:单行超过 1 MiB 限制" << std::endl;
+      std::cout << "<<<zk-rc=2>>>" << std::endl;
+      continue;
+    }
     Json j;
     JsonParser parser(line);
     std::vector<std::string> args;
@@ -688,8 +748,8 @@ static std::string ask(const std::string& prompt, bool& eof) {
 
 static int cmdInteractive() {
   const bool color = wantColor(stderr);
-  const char* B = ""; const char* CY = ""; const char* GN = ""; const char* R = "";
-  if (color) { B = "\033[1m"; CY = "\033[36m"; GN = "\033[32m"; R = "\033[0m"; }
+  const char* B = ""; const char* CY = ""; const char* R = "";
+  if (color) { B = "\033[1m"; CY = "\033[36m"; R = "\033[0m"; }
   bool eof = false;
   for (;;) {
     std::cerr << "\n" << B << "===== zemu-jose 交互模式 =====" << R << "\n"
@@ -731,7 +791,8 @@ static int cmdInteractive() {
       args = {"crack", "--token", ask("token: ", eof)};
       std::string mode = ask("模式 [1=字典 2=掩码]: ", eof);
       if (mode == "1") { args.push_back("--wordlist"); args.push_back(ask("wordlist 路径: ", eof)); }
-      else if (mode == "2") { args.push_back("--mask"); args.push_back(ask("掩码(?l ?u ?d ?s ?a ??): ", eof)); }
+      // 拆分两个问号,避免 C++ trigraph "??)" 预处理提示。
+      else if (mode == "2") { args.push_back("--mask"); args.push_back(ask("掩码(?l=小写 ?u=大写 ?d=数字 ?s=特殊 ?a=全部 ?""?=字面问号): ", eof)); }
       else { std::cerr << "[!] 无效选择" << std::endl; continue; }
       std::string th = ask("threads(留空=自动): ", eof);
       if (!th.empty()) { args.push_back("--threads"); args.push_back(th); }

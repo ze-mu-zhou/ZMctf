@@ -1,4 +1,4 @@
-/** ocl.cpp — OpenCL 动态加载 + JWT HS256 爆破调度。
+/** ocl.cpp — OpenCL 动态加载 + JWT HS256/HS512 爆破调度。
  * 自声明 API 子集(不透明句柄),LoadLibrary("OpenCL.dll") 动态解析
  * (与 flask-unsign 的 ocl.cpp 同构,Win64 cdecl 兼容 ICD 导出)。
  */
@@ -85,6 +85,8 @@ struct OclCtx {
   cl_program prog = nullptr;
   cl_kernel kMask = nullptr;
   cl_kernel kDict = nullptr;
+  cl_kernel kMask512 = nullptr;
+  cl_kernel kDict512 = nullptr;
 };
 
 static OclCtx g_ocl;
@@ -150,7 +152,9 @@ GpuProbe gpuProbe() {
   }
   cl_kernel kMask = p_clCreateKernel(prog, "jwt_crack_mask", &e);
   cl_kernel kDict = p_clCreateKernel(prog, "jwt_crack_dict", &e);
-  if (!kMask || !kDict) { pr.error = "kernel 创建失败"; return pr; }
+  cl_kernel kMask512 = p_clCreateKernel(prog, "jwt_crack_mask512", &e);
+  cl_kernel kDict512 = p_clCreateKernel(prog, "jwt_crack_dict512", &e);
+  if (!kMask || !kDict || !kMask512 || !kDict512) { pr.error = "kernel 创建失败"; return pr; }
 
   g_ocl.ready = true;
   g_ocl.deviceName = devName;
@@ -160,6 +164,8 @@ GpuProbe gpuProbe() {
   g_ocl.prog = prog;
   g_ocl.kMask = kMask;
   g_ocl.kDict = kDict;
+  g_ocl.kMask512 = kMask512;
+  g_ocl.kDict512 = kDict512;
   pr.ok = true;
   pr.deviceName = devName;
   return pr;
@@ -216,6 +222,18 @@ std::vector<uint32_t> packBe32(const std::vector<uint8_t>& in) {
   return out;
 }
 
+uint64_t be64(const uint8_t* p) {
+  uint64_t v = 0;
+  for (int i = 0; i < 8; i++) v = (v << 8) | p[i];
+  return v;
+}
+
+std::vector<uint64_t> packBe64(const std::vector<uint8_t>& in) {
+  std::vector<uint64_t> out(in.size() / 8);
+  for (std::size_t i = 0; i < out.size(); i++) out[i] = be64(in.data() + i * 8);
+  return out;
+}
+
 /** 每 work-item 内层候选数(hashcat Loops 同款摊薄) */
 constexpr std::uint64_t LOOP_N = 256;
 }  // namespace
@@ -224,16 +242,33 @@ int gpuCrackMask(const GpuCrackParams& p, const std::vector<std::string>& pos,
                  std::uint64_t total, std::uint64_t& foundIdx, std::uint64_t& tried,
                  std::string& err) {
   if (!g_ocl.ready) { err = "GPU 未初始化"; return -1; }
+  if (p.hashBits != 256 && p.hashBits != 512) { err = "GPU 仅支持 HS256/HS512"; return -1; }
   if (pos.size() > 64) { err = "掩码超过 64 位上限(GPU)"; return -1; }
 
   KernelArgs a;
   a.ctx = g_ocl.ctx;
   a.q = g_ocl.q;
-  a.k = g_ocl.kMask;
-  std::vector<uint32_t> msgW = packBe32(*p.msgBlocks);
-  std::vector<uint32_t> expectW = packBe32(*p.expect);
-  a.msgBuf.m = makeRoBuf(a.ctx, msgW.data(), msgW.size() * 4, &a.err);
-  a.expectBuf.m = makeRoBuf(a.ctx, expectW.data(), expectW.size() * 4, &a.err);
+  a.k = p.hashBits == 512 ? g_ocl.kMask512 : g_ocl.kMask;
+  std::vector<uint32_t> msgW32;
+  std::vector<uint32_t> expectW32;
+  std::vector<uint64_t> msgW64;
+  std::vector<uint64_t> expectW64;
+  const void* msgData = nullptr;
+  const void* expectData = nullptr;
+  std::size_t msgBytes = 0, expectBytes = 0;
+  if (p.hashBits == 512) {
+    msgW64 = packBe64(*p.msgBlocks);
+    expectW64 = packBe64(*p.expect);
+    msgData = msgW64.data(); expectData = expectW64.data();
+    msgBytes = msgW64.size() * sizeof(uint64_t); expectBytes = expectW64.size() * sizeof(uint64_t);
+  } else {
+    msgW32 = packBe32(*p.msgBlocks);
+    expectW32 = packBe32(*p.expect);
+    msgData = msgW32.data(); expectData = expectW32.data();
+    msgBytes = msgW32.size() * sizeof(uint32_t); expectBytes = expectW32.size() * sizeof(uint32_t);
+  }
+  a.msgBuf.m = makeRoBuf(a.ctx, msgData, msgBytes, &a.err);
+  a.expectBuf.m = makeRoBuf(a.ctx, expectData, expectBytes, &a.err);
   uint32_t found[3] = {0, 0, 0};
   a.foundBuf.m = p_clCreateBuffer(a.ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof found, found, &a.err);
   if (!a.msgBuf.m || !a.expectBuf.m || !a.foundBuf.m) { err = "显存分配失败"; return -1; }
@@ -265,8 +300,25 @@ int gpuCrackMask(const GpuCrackParams& p, const std::vector<std::string>& pos,
   // (kernel 每 work-item 处理 LOOP_N 个候选 → work-item 数 = ceil(n / LOOP_N))
   const std::uint64_t CHUNK = 1ULL << 28;  // 2.68 亿/块(提前退出粒度更细)
   tried = 0;
-  for (std::uint64_t base = 0; base < total; base += CHUNK) {
-    std::uint64_t n = std::min<std::uint64_t>(total - base, CHUNK);
+  std::uint64_t base = 0;
+  for (;;) {
+    std::uint64_t n = 0;
+    if (p.hybridHead && p.hybridTail) {
+      while (!p.hybridStop || !p.hybridStop->load(std::memory_order_relaxed)) {
+        std::uint64_t h = p.hybridHead->load(std::memory_order_relaxed);
+        const std::uint64_t t = p.hybridTail->load(std::memory_order_relaxed);
+        if (h >= t) return 1;
+        n = std::min<std::uint64_t>(t - h, CHUNK);
+        if (p.hybridHead->compare_exchange_weak(h, h + n, std::memory_order_relaxed)) {
+          base = h;
+          break;
+        }
+      }
+      if (n == 0) return 1;
+    } else {
+      if (base >= total) break;
+      n = std::min<std::uint64_t>(total - base, CHUNK);
+    }
     setUlongArg(a.k, 9, base);
     size_t gws = (size_t)((n + LOOP_N - 1) / LOOP_N);
     if (!runChunk(a.q, a.k, gws, err)) return -1;
@@ -274,7 +326,13 @@ int gpuCrackMask(const GpuCrackParams& p, const std::vector<std::string>& pos,
     if (!readFound(a.q, a.foundBuf.m, found, err)) return -1;
     if (found[0]) {
       foundIdx = (std::uint64_t)found[1] | ((std::uint64_t)found[2] << 32);
+      if (p.hybridStop) p.hybridStop->store(true, std::memory_order_relaxed);
       return 0;
+    }
+    if (p.hybridHead && p.hybridTail) {
+      if (p.hybridStop && p.hybridStop->load(std::memory_order_relaxed)) return 1;
+    } else {
+      base += n;
     }
   }
   return 1;
@@ -284,20 +342,32 @@ int gpuCrackDict(const GpuCrackParams& p, const std::uint8_t* words, std::size_t
                  std::uint64_t count, std::uint64_t& foundIdx, std::uint64_t& tried,
                  std::string& err) {
   if (!g_ocl.ready) { err = "GPU 未初始化"; return -1; }
+  if (p.hashBits != 256 && p.hashBits != 512) { err = "GPU 仅支持 HS256/HS512"; return -1; }
   if (stride != 64) { err = "字典 stride 必须为 64 字节"; return -1; }
 
   KernelArgs a;
   a.ctx = g_ocl.ctx;
   a.q = g_ocl.q;
-  a.k = g_ocl.kDict;
-  std::vector<uint32_t> msgW = packBe32(*p.msgBlocks);
-  std::vector<uint32_t> expectW = packBe32(*p.expect);
-  a.msgBuf.m = makeRoBuf(a.ctx, msgW.data(), msgW.size() * 4, &a.err);
-  a.expectBuf.m = makeRoBuf(a.ctx, expectW.data(), expectW.size() * 4, &a.err);
-  // 词条重打包为 BE u32(kernel 零字节数组,按字加载)
-  std::vector<uint32_t> wordsW(count * 16);
-  for (std::uint64_t i = 0; i < count * 16; i++) wordsW[i] = be32(words + i * 4);
-  a.wordsBuf.m = makeRoBuf(a.ctx, wordsW.data(), wordsW.size() * 4, &a.err);
+  a.k = p.hashBits == 512 ? g_ocl.kDict512 : g_ocl.kDict;
+  std::vector<uint32_t> msgW32, expectW32, wordsW32;
+  std::vector<uint64_t> msgW64, expectW64, wordsW64;
+  if (p.hashBits == 512) {
+    msgW64 = packBe64(*p.msgBlocks);
+    expectW64 = packBe64(*p.expect);
+    wordsW64.resize(count * 8);
+    for (std::uint64_t i = 0; i < count * 8; i++) wordsW64[i] = be64(words + i * 8);
+    a.msgBuf.m = makeRoBuf(a.ctx, msgW64.data(), msgW64.size() * 8, &a.err);
+    a.expectBuf.m = makeRoBuf(a.ctx, expectW64.data(), expectW64.size() * 8, &a.err);
+    a.wordsBuf.m = makeRoBuf(a.ctx, wordsW64.data(), wordsW64.size() * 8, &a.err);
+  } else {
+    msgW32 = packBe32(*p.msgBlocks);
+    expectW32 = packBe32(*p.expect);
+    wordsW32.resize(count * 16);
+    for (std::uint64_t i = 0; i < count * 16; i++) wordsW32[i] = be32(words + i * 4);
+    a.msgBuf.m = makeRoBuf(a.ctx, msgW32.data(), msgW32.size() * 4, &a.err);
+    a.expectBuf.m = makeRoBuf(a.ctx, expectW32.data(), expectW32.size() * 4, &a.err);
+    a.wordsBuf.m = makeRoBuf(a.ctx, wordsW32.data(), wordsW32.size() * 4, &a.err);
+  }
   uint32_t found[3] = {0, 0, 0};
   a.foundBuf.m = p_clCreateBuffer(a.ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof found, found, &a.err);
   if (!a.msgBuf.m || !a.expectBuf.m || !a.wordsBuf.m || !a.foundBuf.m) {
@@ -315,14 +385,40 @@ int gpuCrackDict(const GpuCrackParams& p, const std::uint8_t* words, std::size_t
   // 分块 enqueue:命中即提前退出(kernel 每 work-item 处理 LOOP_N 个词条)
   const std::uint64_t CHUNK = 1ULL << 24;  // 1677 万/块
   tried = 0;
-  for (std::uint64_t base = 0; base < count; base += CHUNK) {
-    std::uint64_t n = std::min<std::uint64_t>(count - base, CHUNK);
+  std::uint64_t base = 0;
+  for (;;) {
+    std::uint64_t n = 0;
+    if (p.hybridHead && p.hybridTail) {
+      while (!p.hybridStop || !p.hybridStop->load(std::memory_order_relaxed)) {
+        std::uint64_t h = p.hybridHead->load(std::memory_order_relaxed);
+        const std::uint64_t t = p.hybridTail->load(std::memory_order_relaxed);
+        if (h >= t) return 1;
+        n = std::min<std::uint64_t>(t - h, CHUNK);
+        if (p.hybridHead->compare_exchange_weak(h, h + n, std::memory_order_relaxed)) {
+          base = h;
+          break;
+        }
+      }
+      if (n == 0) return 1;
+    } else {
+      if (base >= count) break;
+      n = std::min<std::uint64_t>(count - base, CHUNK);
+    }
     setUlongArg(a.k, 7, base);
     size_t gws = (size_t)((n + LOOP_N - 1) / LOOP_N);
     if (!runChunk(a.q, a.k, gws, err)) return -1;
     tried += n;
     if (!readFound(a.q, a.foundBuf.m, found, err)) return -1;
-    if (found[0]) { foundIdx = found[1]; return 0; }
+    if (found[0]) {
+      foundIdx = found[1];
+      if (p.hybridStop) p.hybridStop->store(true, std::memory_order_relaxed);
+      return 0;
+    }
+    if (p.hybridHead && p.hybridTail) {
+      if (p.hybridStop && p.hybridStop->load(std::memory_order_relaxed)) return 1;
+    } else {
+      base += n;
+    }
   }
   return 1;
 }

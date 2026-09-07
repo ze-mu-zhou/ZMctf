@@ -125,13 +125,18 @@ zemu-jose verify --token <jwt> --key pub.pem
 zemu-jose sign --alg HS256 --secret 'secret' --json '{"admin":true}'
 zemu-jose sign --alg RS256 --key priv.pem --json '{"admin":true}'
 
-# 爆破(自动识别 HS256,GPU 优先)
+# 爆破(自动识别 HS256,GPU+CPU hybrid)
 zemu-jose crack --token <jwt> --mask '?l?l?l?d?d?d'
 zemu-jose crack --token <jwt> --wordlist rockyou.txt --engine cpu --threads 32
 
 # JWE dir 模式解密(A256GCM,key 支持 hex 或原始字节)
 zemu-jose decode --token <jwe> --key <hexkey>
 ```
+
+`--engine auto` 在可用的 OpenCL GPU 上采用 hybrid 调度:GPU 从 keyspace 头部领取区间,
+CPU 多线程从尾部领取区间,任一侧命中即停止另一侧;GPU 不可用或算法不支持时自动回退 CPU。
+`--engine gpu` 强制纯 GPU,`--engine cpu` 强制纯 CPU。GPU 当前支持 HS256/HS512,
+HS384 仍走 CPU 路径。
 
 ## 目录结构
 

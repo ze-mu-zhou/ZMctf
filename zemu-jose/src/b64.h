@@ -25,14 +25,18 @@ inline constexpr std::array<char, 64> ENC = [] {
   return t;
 }();
 
-/** 解码表:URL-safe 变体 -_ 与标准 +/ 均接受(宽松);-1 = 非法字符 */
+/** 解码表:JOSE URL-safe 字母表;-1 = 非法字符 */
 inline constexpr std::array<int8_t, 256> DEC = [] {
   std::array<int8_t, 256> t{};
   t.fill(-1);
   for (int i = 0; i < 64; i++) t[(uint8_t)ENC[i]] = (int8_t)i;
-  t[(uint8_t)'+'] = 62;  // 宽松:接受标准 base64
+  return t;
+}();
+
+inline constexpr std::array<int8_t, 256> STD_DEC = [] {
+  auto t = DEC;
+  t[(uint8_t)'+'] = 62;
   t[(uint8_t)'/'] = 63;
-  t[(uint8_t)'='] = -2;  // 填充符,跳过
   return t;
 }();
 
@@ -66,15 +70,25 @@ inline std::string encode(std::string_view s) {
   return encode(std::span<const uint8_t>((const uint8_t*)s.data(), s.size()));
 }
 
-/** 解码(无填充输入)。返回 false 表示非法输入。 */
-inline bool decode(std::string_view in, std::vector<uint8_t>& out) {
+inline bool decodeImpl(std::string_view in, std::vector<uint8_t>& out,
+                       bool standardAlphabet, bool allowPadding) {
   out.clear();
   out.reserve(in.size() / 4 * 3 + 3);
   uint32_t acc = 0;
   int nbits = 0;
-  for (char c : in) {
-    int8_t v = DEC[(uint8_t)c];
-    if (v == -2) continue;  // '=' 填充符
+  std::size_t dataLen = in.size();
+  std::size_t pad = 0;
+  while (dataLen > 0 && in[dataLen - 1] == '=') { dataLen--; pad++; }
+  if (!allowPadding && pad != 0) return false;
+  if (allowPadding) {
+    if (pad > 2 || in.size() % 4 != 0) return false;
+    for (std::size_t i = 0; i < dataLen; i++)
+      if (in[i] == '=') return false;
+    if (pad != (4 - (dataLen % 4)) % 4) return false;
+  }
+  const auto& table = standardAlphabet ? STD_DEC : DEC;
+  for (std::size_t i = 0; i < dataLen; i++) {
+    int8_t v = table[(uint8_t)in[i]];
     if (v < 0) return false;
     acc = acc << 6 | (uint32_t)v;
     nbits += 6;
@@ -85,7 +99,18 @@ inline bool decode(std::string_view in, std::vector<uint8_t>& out) {
     }
   }
   if (nbits >= 6) return false;  // 尾部残留 ≥6 bit:非法(非 4 的倍数)
+  if (nbits != 0 && acc != 0) return false;  // 非规范尾部 bit
   return true;
+}
+
+/** 解码(无填充输入)。仅接受 RFC 7515 Base64url。 */
+inline bool decode(std::string_view in, std::vector<uint8_t>& out) {
+  return decodeImpl(in, out, false, false);
+}
+
+/** 解码标准 Base64(仅供 PEM 等非 JOSE 输入使用,允许末尾 padding)。 */
+inline bool decodeStd(std::string_view in, std::vector<uint8_t>& out) {
+  return decodeImpl(in, out, true, true);
 }
 
 /** 便捷解码:成功返回字节,失败返回 nullopt */

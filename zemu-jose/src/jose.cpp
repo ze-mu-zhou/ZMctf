@@ -53,8 +53,12 @@ Token parseToken(std::string_view raw) {
   Token t;
   t.raw = std::string(raw);
   // 去首尾空白
-  while (!t.raw.empty() && (t.raw.front() == ' ' || t.raw.front() == '\n' || t.raw.front() == '\r'))
-    t.raw.erase(t.raw.begin());
+  const std::size_t first = t.raw.find_first_not_of(" \t\n\r");
+  if (first == std::string::npos) {
+    t.raw.clear();
+    return t;
+  }
+  if (first != 0) t.raw.erase(0, first);
   while (!t.raw.empty() && (t.raw.back() == ' ' || t.raw.back() == '\n' || t.raw.back() == '\r'))
     t.raw.pop_back();
   if (t.raw.empty()) return t;
@@ -82,7 +86,8 @@ Token parseToken(std::string_view raw) {
         auto hb = b64::decode(t.jsonProtected[0]);
         if (hb) {
           Json h;
-          JsonParser hp(std::string((const char*)hb->data(), hb->size()));
+          std::string headerText((const char*)hb->data(), hb->size());
+          JsonParser hp(headerText);
           if (hp.parse(h)) {
             t.header = h;
             if (auto a = headerStr(h, "alg")) t.alg = *a;
@@ -114,7 +119,8 @@ Token parseToken(std::string_view raw) {
     if (auto hb2 = b64::decode(t.headerB64)) {
       t.headerBytes = *hb2;
       Json h2;
-      JsonParser hp2(std::string((const char*)hb2->data(), hb2->size()));
+      std::string headerText((const char*)hb2->data(), hb2->size());
+      JsonParser hp2(headerText);
       if (hp2.parse(h2) && h2.type == Json::OBJ) t.header = h2;
     }
     if (!t.payloadB64.empty())
@@ -141,7 +147,8 @@ Token parseToken(std::string_view raw) {
   if (!hb) { t.kind = Token::Kind::INVALID; return t; }
   t.headerBytes = *hb;
   Json h;
-  JsonParser hp(std::string((const char*)hb->data(), hb->size()));
+  std::string headerText((const char*)hb->data(), hb->size());
+  JsonParser hp(headerText);
   if (!hp.parse(h) || !hp.atEnd() || h.type != Json::OBJ) { t.kind = Token::Kind::INVALID; return t; }
   t.header = h;
   if (auto a = headerStr(h, "alg")) t.alg = *a;
@@ -220,6 +227,17 @@ void printJson(const Json& j, std::string& out, int indent) {
 
 std::string decodeToString(const Token& t, const std::string& keyHint) {
   std::string out;
+  auto appendSafe = [&](std::string_view s) {
+    for (unsigned char c : s) {
+      if (c < 0x20 || c == 0x7f) {
+        char buf[5];
+        std::snprintf(buf, sizeof buf, "\\x%02x", c);
+        out += buf;
+      } else {
+        out.push_back((char)c);
+      }
+    }
+  };
   auto sep = [&](const char* name, const std::string& val) {
     out += name;
     out += val;
@@ -277,9 +295,9 @@ std::string decodeToString(const Token& t, const std::string& keyHint) {
       if (p.parse(j) && p.atEnd()) printJson(j, out, 0);
       else {
         if (ps.size() > 512) {
-          out += ps.substr(0, 512);
+          appendSafe(std::string_view(ps).substr(0, 512));
           out += "\n... (截断,共 " + std::to_string(ps.size()) + " 字节)";
-        } else out += ps;
+        } else appendSafe(ps);
       }
     } else out += "(空 payload)\n";
     if (t.kind == Token::Kind::Unsecured) return out;
@@ -368,7 +386,8 @@ int verifyToken(const Token& t, const std::string& secret, const std::string& ke
 
   switch (a.algo) {
     case Algo::NONE:
-      return t.sig.empty() ? 0 : 1;
+      // compact JWS 的 none 算法必须使用真正的空签名段。
+      return t.sigB64.empty() && t.sig.empty() ? 0 : 1;
     case Algo::HS256:
     case Algo::HS384:
     case Algo::HS512: {
@@ -510,6 +529,11 @@ std::optional<std::string> signToken(const std::string& alg, const std::string& 
     case Algo::ES512: {
       void* key = nullptr;
       if (!loadKeyPemOrJwk(keyPem, keyJwk, true, key)) { err = "ES* 签名需要私钥"; return std::nullopt; }
+      if (!ossl::ecKeyMatchesAlg(key, a.hashBits)) {
+        ossl::freeKey(key);
+        err = "ES* 私钥曲线与 alg 不匹配";
+        return std::nullopt;
+      }
       std::vector<std::uint8_t> sig;
       int rc = ossl::signEs(key, a.hashBits, (const std::uint8_t*)signingInput.data(),
                             signingInput.size(), sig);
@@ -558,6 +582,8 @@ CrackResult crackHmac(const Token& t, const CrackOptions& opt) {
   cs.signingInput.assign(signingInput.begin(), signingInput.end());
   if (a.hashBits == 256)
     cs.fm = std::make_unique<sha2::HmacSha256FixedMsg>(cs.signingInput);
+  else
+    cs.fm512 = std::make_unique<sha2::HmacSha512FixedMsg>(cs.signingInput, a.hashBits == 384);
 
   std::vector<std::string> words;
   std::vector<std::string> pos;
@@ -605,15 +631,40 @@ CrackResult crackHmac(const Token& t, const CrackOptions& opt) {
 
   auto t0 = std::chrono::steady_clock::now();
 
-  // GPU 路径(仅 HS256;auto 时掩码任务优先 GPU,CPU 兜底)
-  bool tryGpu = a.hashBits == 256 && (opt.engine == "gpu" || opt.engine == "auto");
-  if (tryGpu && cs.fm->msgBlocks.size() > 16) {
-    // GPU kernel 上限 16 个消息块(1024B 签名输入),超出回退 CPU
+  // GPU 路径(HS256/HS512;auto 时 GPU 从头、CPU 从尾协同,异常再回退 CPU)
+  const std::uint64_t maskSpace = useMask ? maskTotal(pos) : 0;
+  // 冷启动 OpenCL 有固定开销;auto 对小任务直接走 CPU,显式 gpu 仍强制启用。
+  constexpr std::uint64_t GPU_AUTO_THRESHOLD = 1ULL << 23;  // 8M 候选
+  const bool autoLarge = opt.engine == "auto" &&
+                         ((useMask && maskSpace >= GPU_AUTO_THRESHOLD) ||
+                          (!useMask && words.size() >= GPU_AUTO_THRESHOLD));
+  // HS512 kernel 更重,掩码需更大空间摊平开销;大字典则沿用通用阈值。
+  const bool hs512Auto = a.hashBits == 512 && opt.engine == "auto" &&
+                         ((useMask && maskSpace >= (1ULL << 28)) ||
+                          (!useMask && words.size() >= GPU_AUTO_THRESHOLD));
+  bool tryGpu = opt.engine == "gpu" ||
+                (a.hashBits == 256 && autoLarge) ||
+                (a.hashBits == 512 && hs512Auto);
+  const std::size_t gpuMsgBlocks = a.hashBits == 256 ? cs.fm->msgBlocks.size() : cs.fm512->msgBlocks.size();
+  if (tryGpu && gpuMsgBlocks > 16) {
+    // GPU kernel 上限 16 个消息块,超出回退 CPU
     if (opt.engine == "gpu") {
-      res.error = "签名输入过长(>1024B),GPU 不支持;请用 --engine cpu";
+      res.error = "签名输入过长,GPU 不支持;请用 --engine cpu";
       return res;
     }
     tryGpu = false;
+  }
+  if (tryGpu && !useMask) {
+    const bool hasLongWord = std::any_of(words.begin(), words.end(),
+                                         [](const std::string& w) { return w.size() > 63; });
+    if (hasLongWord) {
+      if (opt.engine == "gpu") {
+        res.error = "GPU 字典模式不支持超过 63 字节的候选,请用 --engine cpu";
+        return res;
+      }
+      // GPU 使用定长 64 字节缓冲,长词必须完整回退 CPU,避免截断造成假命中。
+      tryGpu = false;
+    }
   }
   if (tryGpu) {
     gpu::GpuProbe pr = gpu::gpuProbe();
@@ -623,21 +674,44 @@ CrackResult crackHmac(const Token& t, const CrackOptions& opt) {
     }
     if (pr.ok) {
       std::vector<std::uint8_t> msgBlocks;
-      for (auto& b : cs.fm->msgBlocks)
-        msgBlocks.insert(msgBlocks.end(), b.begin(), b.end());
-      gpu::GpuCrackParams gp{&msgBlocks, (int)cs.fm->msgBlocks.size(), &cs.expect};
+      if (a.hashBits == 256) {
+        for (auto& b : cs.fm->msgBlocks) msgBlocks.insert(msgBlocks.end(), b.begin(), b.end());
+      } else {
+        for (auto& b : cs.fm512->msgBlocks) msgBlocks.insert(msgBlocks.end(), b.begin(), b.end());
+      }
+      gpu::GpuCrackParams gp{&msgBlocks, (int)gpuMsgBlocks, &cs.expect, a.hashBits};
       std::string gerr;
       std::uint64_t foundIdx = 0;
       std::uint64_t tried = 0;
       int rc = -1;
       if (useMask) {
         std::uint64_t total = maskTotal(pos);
-        rc = gpu::gpuCrackMask(gp, pos, total, foundIdx, tried, gerr);
+        if (opt.engine == "auto") {
+          HybridCtl ctl;
+          ctl.tail.store(total, std::memory_order_relaxed);
+          gp.hybridHead = &ctl.head;
+          gp.hybridTail = &ctl.tail;
+          gp.hybridStop = &ctl.stop;
+          std::thread cpuT([&] { crackMaskHybrid(cs, threads, ctl); });
+          rc = gpu::gpuCrackMask(gp, pos, total, foundIdx, tried, gerr);
+          // GPU 返回 1 可能只是 head 已追上 tail; CPU 仍需完成已领取的尾段。
+          if (rc == -1) ctl.stop.store(true, std::memory_order_relaxed);
+          cpuT.join();
+          if (cs.found.load(std::memory_order_relaxed)) {
+            res.found = true;
+            res.secret = cs.foundSecret;
+            rc = 0;
+          }
+        } else {
+          rc = gpu::gpuCrackMask(gp, pos, total, foundIdx, tried, gerr);
+        }
         if (rc == 0) {
-          res.found = true;
-          char buf[CrackShared::MAX_MASK_LEN];
-          maskUnrank(pos, foundIdx, buf);
-          res.secret.assign(buf, pos.size());
+          if (!res.found) {
+            res.found = true;
+            char buf[CrackShared::MAX_MASK_LEN];
+            maskUnrank(pos, foundIdx, buf);
+            res.secret.assign(buf, pos.size());
+          }
         }
       } else {
         // 字典:打包定长,超长词截断到 63 字节(防越界)
@@ -646,16 +720,36 @@ CrackResult crackHmac(const Token& t, const CrackOptions& opt) {
         for (std::size_t i = 0; i < words.size(); i++)
           std::memcpy(packed.data() + i * stride, words[i].data(),
                       std::min(words[i].size(), (std::size_t)63));
-        rc = gpu::gpuCrackDict(gp, packed.data(), stride, words.size(), foundIdx, tried, gerr);
+        if (opt.engine == "auto") {
+          HybridCtl ctl;
+          ctl.tail.store(words.size(), std::memory_order_relaxed);
+          gp.hybridHead = &ctl.head;
+          gp.hybridTail = &ctl.tail;
+          gp.hybridStop = &ctl.stop;
+          std::thread cpuT([&] { crackDictHybrid(cs, threads, ctl); });
+          rc = gpu::gpuCrackDict(gp, packed.data(), stride, words.size(), foundIdx, tried, gerr);
+          // GPU 返回 1 可能只是 head 已追上 tail; CPU 仍需完成已领取的尾段。
+          if (rc == -1) ctl.stop.store(true, std::memory_order_relaxed);
+          cpuT.join();
+          if (cs.found.load(std::memory_order_relaxed)) {
+            res.found = true;
+            res.secret = cs.foundSecret;
+            rc = 0;
+          }
+        } else {
+          rc = gpu::gpuCrackDict(gp, packed.data(), stride, words.size(), foundIdx, tried, gerr);
+        }
         if (rc == 0) {
-          res.found = true;
-          res.secret = words[foundIdx];
+          if (!res.found) {
+            res.found = true;
+            res.secret = words[foundIdx];
+          }
         }
       }
       if (rc == 0 || rc == 1) {
         auto t1 = std::chrono::steady_clock::now();
         res.elapsedSec = std::chrono::duration<double>(t1 - t0).count();
-        res.attempts = tried;  // 实际计算量(命中提前退出时 < 全空间)
+        res.attempts = tried + cs.attempts.load(std::memory_order_relaxed);
         if (res.elapsedSec > 0) res.ratePerSec = (double)res.attempts / res.elapsedSec;
         return res;
       }

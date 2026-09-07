@@ -4,6 +4,7 @@
  *
  * 结构镜像 zemu-flask/src/sha1.h:
  * - hasShaNi()/g_forceImpl 运行时 cpuid 调度,SHA-NI 块函数以 target("sha,sse4.1") 编译;
+ * - HMAC-SHA384/512 热路径的 AVX-512 以函数级 target + 运行时分派隔离;
  * - HMAC 三种形态:一次性 / 增量式(固定 key 预存 ipad/opad 压缩态)/ 爆破热路径。
  */
 #pragma once
@@ -23,6 +24,16 @@ namespace jose::sha2 {
 inline bool hasShaNi() {
   static const bool v = __builtin_cpu_supports("sha");
   return v;
+}
+
+/** CPU 是否支持 AVX-512F(cpuid,只查一次) */
+inline bool hasAvx512F() {
+#if defined(__GNUC__) || defined(__clang__)
+  static const bool v = __builtin_cpu_supports("avx512f");
+  return v;
+#else
+  return false;
+#endif
 }
 
 /** 实现强制切换:0=自动,1=便携,2=SHA-NI(selftest 对拍用) */
@@ -357,6 +368,71 @@ inline void sha512Block(std::uint64_t s[8], const std::uint8_t* p) {
   s[0] += a; s[1] += b; s[2] += c; s[3] += d; s[4] += e; s[5] += f; s[6] += g; s[7] += h;
 }
 
+#if defined(__GNUC__) || defined(__clang__)
+using Sha512Vec = __m512i;
+
+__attribute__((target("avx512f")))
+inline Sha512Vec sha512VecRotR(Sha512Vec x, int n) {
+  return _mm512_or_si512(_mm512_srli_epi64(x, n), _mm512_slli_epi64(x, 64 - n));
+}
+
+/** AVX-512F SHA-512 compression: eight independent candidates in parallel. */
+__attribute__((target("avx512f")))
+inline void sha512Block8(Sha512Vec s[8], const Sha512Vec in[16]) {
+  Sha512Vec w[80];
+  for (int i = 0; i < 16; i++) w[i] = in[i];
+  for (int i = 16; i < 80; i++) {
+    Sha512Vec x = w[i - 15];
+    Sha512Vec y = w[i - 2];
+    Sha512Vec s0 = _mm512_xor_si512(
+        _mm512_xor_si512(sha512VecRotR(x, 1), sha512VecRotR(x, 8)), _mm512_srli_epi64(x, 7));
+    Sha512Vec s1 = _mm512_xor_si512(
+        _mm512_xor_si512(sha512VecRotR(y, 19), sha512VecRotR(y, 61)), _mm512_srli_epi64(y, 6));
+    w[i] = _mm512_add_epi64(_mm512_add_epi64(w[i - 16], s0),
+                            _mm512_add_epi64(w[i - 7], s1));
+  }
+  Sha512Vec a = s[0], b = s[1], c = s[2], d = s[3];
+  Sha512Vec e = s[4], f = s[5], g = s[6], h = s[7];
+  for (int i = 0; i < 80; i++) {
+    Sha512Vec S1 = _mm512_xor_si512(
+        _mm512_xor_si512(sha512VecRotR(e, 14), sha512VecRotR(e, 18)), sha512VecRotR(e, 41));
+    Sha512Vec ch = _mm512_xor_si512(_mm512_and_si512(e, f), _mm512_andnot_si512(e, g));
+    Sha512Vec t1 = _mm512_add_epi64(
+        _mm512_add_epi64(_mm512_add_epi64(h, S1), ch),
+        _mm512_add_epi64(_mm512_set1_epi64((long long)SHA512_K[i]), w[i]));
+    Sha512Vec S0 = _mm512_xor_si512(
+        _mm512_xor_si512(sha512VecRotR(a, 28), sha512VecRotR(a, 34)), sha512VecRotR(a, 39));
+    Sha512Vec maj = _mm512_xor_si512(
+        _mm512_xor_si512(_mm512_and_si512(a, b), _mm512_and_si512(a, c)), _mm512_and_si512(b, c));
+    Sha512Vec t2 = _mm512_add_epi64(S0, maj);
+    h = g; g = f; f = e; e = _mm512_add_epi64(d, t1);
+    d = c; c = b; b = a; a = _mm512_add_epi64(t1, t2);
+  }
+  s[0] = _mm512_add_epi64(s[0], a); s[1] = _mm512_add_epi64(s[1], b);
+  s[2] = _mm512_add_epi64(s[2], c); s[3] = _mm512_add_epi64(s[3], d);
+  s[4] = _mm512_add_epi64(s[4], e); s[5] = _mm512_add_epi64(s[5], f);
+  s[6] = _mm512_add_epi64(s[6], g); s[7] = _mm512_add_epi64(s[7], h);
+}
+
+__attribute__((target("avx512f")))
+inline void sha512MakeKeyBlock8(const std::uint8_t* const keys[8], std::size_t keylen,
+                                std::uint8_t pad, Sha512Vec dst[16]) {
+  std::uint64_t lanes[8];
+  for (int w = 0; w < 16; w++) {
+    for (int lane = 0; lane < 8; lane++) {
+      std::uint64_t v = 0;
+      for (int b = 0; b < 8; b++) {
+        const std::size_t off = (std::size_t)w * 8 + b;
+        const std::uint8_t c = off < keylen ? keys[lane][off] : 0;
+        v = (v << 8) | (std::uint8_t)(c ^ pad);
+      }
+      lanes[lane] = v;
+    }
+    dst[w] = _mm512_loadu_si512(lanes);
+  }
+}
+#endif
+
 /** 流式 SHA-512(SHA-384 复用,IV/截断不同) */
 struct Sha512 {
   std::uint64_t s[8];
@@ -531,22 +607,12 @@ struct HmacSha256FixedMsg {
     } else {
       std::memcpy(k, key, keylen);
     }
-    // 合并为连续缓冲,一次调用处理全部内层块
-    // msg 块数 ≤3 走栈上定长缓冲(热路径零分配),更长消息用堆缓冲
-    std::uint8_t stackBuf[64 + 3 * 64];
-    std::vector<std::uint8_t> dynBuf;
-    std::uint8_t* innerBuf = stackBuf;
-    if (msgBlocks.size() > 3) {
-      dynBuf.resize(64 * (1 + msgBlocks.size()));
-      innerBuf = dynBuf.data();
-    }
-    std::uint8_t* p = innerBuf;
-    for (int i = 0; i < 64; i++) *p++ = k[i] ^ 0x36;
-    for (auto& b : msgBlocks) { std::memcpy(p, b.data(), 64); p += 64; }
     std::uint32_t is[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
                            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
-    std::size_t innerBlocks = 1 + msgBlocks.size();
-    sha256Blocks(is, innerBuf, innerBlocks);
+    std::uint8_t ipad[64];
+    for (int i = 0; i < 64; i++) ipad[i] = k[i] ^ 0x36;
+    sha256Blocks(is, ipad, 1);
+    if (!msgBlocks.empty()) sha256Blocks(is, msgBlocks.front().data(), msgBlocks.size());
     std::uint8_t inner[32];
     for (int i = 0; i < 8; i++) {
       inner[i * 4] = (std::uint8_t)(is[i] >> 24);
@@ -569,6 +635,150 @@ struct HmacSha256FixedMsg {
       out[i * 4 + 2] = (std::uint8_t)(os[i] >> 8);
       out[i * 4 + 3] = (std::uint8_t)os[i];
     }
+  }
+
+};
+
+/** HMAC-SHA384/512 爆破热路径:固定消息,候选 key 逐个变。 */
+struct HmacSha512FixedMsg {
+  static constexpr std::size_t BLOCK = 128;
+  bool sha384;
+  std::size_t digestLen;
+  std::vector<std::array<std::uint8_t, BLOCK>> msgBlocks;
+  std::array<std::uint8_t, BLOCK> innerFinalBlock{};
+
+  HmacSha512FixedMsg(std::span<const std::uint8_t> msg, bool useSha384)
+      : sha384(useSha384), digestLen(useSha384 ? 48 : 64) {
+    const std::uint64_t bits = ((std::uint64_t)msg.size() + BLOCK) * 8;
+    const std::size_t rem = msg.size() % BLOCK;
+    const std::size_t padlen = rem < 112 ? 112 - rem : 240 - rem;
+    const std::size_t totalBytes = msg.size() + padlen + 16;
+    msgBlocks.resize(totalBytes / BLOCK);
+    std::size_t off = 0;
+    while (off < msg.size()) {
+      const std::size_t n = std::min<std::size_t>(msg.size() - off, BLOCK);
+      std::memcpy(msgBlocks[off / BLOCK].data(), msg.data() + off, n);
+      off += n;
+    }
+    const std::size_t blockIdx = msg.size() / BLOCK;
+    const std::size_t inBlock = msg.size() % BLOCK;
+    msgBlocks[blockIdx][inBlock] = 0x80;
+    for (int i = 0; i < 8; i++)
+      msgBlocks.back()[BLOCK - 1 - i] = (std::uint8_t)(bits >> (i * 8));
+
+    // 外层最终块:inner digest || 0x80 || 长度(128 + digestLen)字节。
+    innerFinalBlock[digestLen] = 0x80;
+    const std::uint64_t outerBits = (BLOCK + digestLen) * 8;
+    for (int i = 0; i < 8; i++)
+      innerFinalBlock[BLOCK - 1 - i] = (std::uint8_t)(outerBits >> (i * 8));
+  }
+
+  void macCore(const std::uint8_t* key, std::size_t keylen, std::uint8_t out[64]) const {
+    std::uint8_t k[BLOCK] = {};
+    if (keylen > BLOCK) {
+      Sha512 h(sha384);
+      h.update(key, keylen);
+      h.final(k);
+    } else {
+      std::memcpy(k, key, keylen);
+    }
+
+    static const std::uint64_t IV384[8] = {
+        0xcbbb9d5dc1059ed8ULL, 0x629a292a367cd507ULL, 0x9159015a3070dd17ULL,
+        0x152fecd8f70e5939ULL, 0x67332667ffc00b31ULL, 0x8eb44a8768581511ULL,
+        0xdb0c2e0d64f98fa7ULL, 0x47b5481dbefa4fa4ULL};
+    static const std::uint64_t IV512[8] = {
+        0x6a09e667f3bcc908ULL, 0xbb67ae8584caa73bULL, 0x3c6ef372fe94f82bULL,
+        0xa54ff53a5f1d36f1ULL, 0x510e527fade682d1ULL, 0x9b05688c2b3e6c1fULL,
+        0x1f83d9abfb41bd6bULL, 0x5be0cd19137e2179ULL};
+    std::uint64_t is[8];
+    std::memcpy(is, sha384 ? IV384 : IV512, sizeof is);
+    std::uint8_t padBlock[BLOCK];
+    for (std::size_t i = 0; i < BLOCK; i++) padBlock[i] = k[i] ^ 0x36;
+    sha512Block(is, padBlock);
+    for (const auto& block : msgBlocks) sha512Block(is, block.data());
+
+    std::uint8_t inner[64] = {};
+    for (int i = 0; i < 8; i++)
+      for (int j = 0; j < 8; j++) inner[i * 8 + j] = (std::uint8_t)(is[i] >> (56 - j * 8));
+
+    std::uint64_t os[8];
+    std::memcpy(os, sha384 ? IV384 : IV512, sizeof os);
+    for (std::size_t i = 0; i < BLOCK; i++) padBlock[i] = k[i] ^ 0x5c;
+    sha512Block(os, padBlock);
+    std::array<std::uint8_t, BLOCK> final = innerFinalBlock;
+    std::memcpy(final.data(), inner, digestLen);
+    sha512Block(os, final.data());
+    for (int i = 0; i < 8; i++)
+      for (int j = 0; j < 8; j++) out[i * 8 + j] = (std::uint8_t)(os[i] >> (56 - j * 8));
+  }
+
+  // AVX-512 仅隔离在此函数,由调用方运行时分派。
+  __attribute__((target("avx512f"), flatten))
+  void macAvx512(const std::uint8_t* key, std::size_t keylen, std::uint8_t out[64]) const {
+    macCore(key, keylen, out);
+  }
+
+#if defined(__GNUC__) || defined(__clang__)
+  /** AVX-512F HMAC-SHA384/512:每个 64-bit lane 对应一个候选 key。 */
+  __attribute__((target("avx512f")))
+  void mac8(const std::uint8_t* const keys[8], std::size_t keylen,
+            std::uint8_t* const outs[8]) const {
+    if (keylen > BLOCK) {
+      for (int i = 0; i < 8; i++) macCore(keys[i], keylen, outs[i]);
+      return;
+    }
+    static const std::uint64_t IV384[8] = {
+        0xcbbb9d5dc1059ed8ULL, 0x629a292a367cd507ULL, 0x9159015a3070dd17ULL,
+        0x152fecd8f70e5939ULL, 0x67332667ffc00b31ULL, 0x8eb44a8768581511ULL,
+        0xdb0c2e0d64f98fa7ULL, 0x47b5481dbefa4fa4ULL};
+    static const std::uint64_t IV512[8] = {
+        0x6a09e667f3bcc908ULL, 0xbb67ae8584caa73bULL, 0x3c6ef372fe94f82bULL,
+        0xa54ff53a5f1d36f1ULL, 0x510e527fade682d1ULL, 0x9b05688c2b3e6c1fULL,
+        0x1f83d9abfb41bd6bULL, 0x5be0cd19137e2179ULL};
+    auto loadBe = [](const std::uint8_t* p) {
+      std::uint64_t v = 0;
+      for (int i = 0; i < 8; i++) v = (v << 8) | p[i];
+      return v;
+    };
+    Sha512Vec block[16];
+    Sha512Vec st[8];
+    for (int i = 0; i < 8; i++) st[i] = _mm512_set1_epi64((long long)(sha384 ? IV384[i] : IV512[i]));
+    sha512MakeKeyBlock8(keys, keylen, 0x36, block);
+    sha512Block8(st, block);
+    for (const auto& msgBlock : msgBlocks) {
+      for (int w = 0; w < 16; w++) block[w] = _mm512_set1_epi64((long long)loadBe(msgBlock.data() + w * 8));
+      sha512Block8(st, block);
+    }
+
+    const int digestWords = (int)(digestLen / 8);
+    Sha512Vec finalBlock[16];
+    for (int w = 0; w < 16; w++) finalBlock[w] = _mm512_setzero_si512();
+    for (int i = 0; i < digestWords; i++) finalBlock[i] = st[i];
+    finalBlock[digestWords] = _mm512_set1_epi64((long long)0x8000000000000000ULL);
+    finalBlock[15] = _mm512_set1_epi64((long long)((BLOCK + digestLen) * 8));
+    Sha512Vec opadBlock[16];
+    sha512MakeKeyBlock8(keys, keylen, 0x5c, opadBlock);
+    Sha512Vec outer[8];
+    for (int i = 0; i < 8; i++) outer[i] = _mm512_set1_epi64((long long)(sha384 ? IV384[i] : IV512[i]));
+    sha512Block8(outer, opadBlock);
+    sha512Block8(outer, finalBlock);
+
+    std::uint64_t lanes[8];
+    for (int i = 0; i < 8; i++) {
+      _mm512_storeu_si512(lanes, outer[i]);
+      for (int lane = 0; lane < 8; lane++)
+        for (int b = 0; b < 8; b++) outs[lane][i * 8 + b] = (std::uint8_t)(lanes[lane] >> (56 - b * 8));
+    }
+  }
+#endif
+
+  void mac(const std::uint8_t* key, std::size_t keylen, std::uint8_t out[64]) const {
+    if (hasAvx512F()) {
+      macAvx512(key, keylen, out);
+      return;
+    }
+    macCore(key, keylen, out);
   }
 };
 

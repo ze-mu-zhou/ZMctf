@@ -127,9 +127,9 @@ inline std::optional<std::vector<std::uint8_t>> pemDecode(const std::string& pem
     if (c != '\n' && c != '\r' && c != ' ' && c != '\t') b64.push_back(c);
   }
   if (b64.empty()) return std::nullopt;
-  auto raw = jose::b64::decode(b64);
-  if (!raw) return std::nullopt;
-  return *raw;
+  std::vector<std::uint8_t> decoded;
+  if (!jose::b64::decodeStd(b64, decoded)) return std::nullopt;
+  return decoded;
 }
 
 /** 解析 SPKI(PUBLIC KEY)或 PKCS#1 公钥(RSA PUBLIC KEY)的 DER */
